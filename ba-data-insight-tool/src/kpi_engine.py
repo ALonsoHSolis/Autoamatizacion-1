@@ -412,3 +412,116 @@ def period_comparison(
         "direction": direction,
         "periods_back": periods,
     }
+
+
+def forecast_trend(
+    df: pd.DataFrame,
+    date_col: str,
+    amount_col: str | None = None,
+    periods_ahead: int = 3,
+) -> dict[str, Any]:
+    """Fit a linear trend to the temporal series and project N periods ahead.
+
+    Returns a dict with:
+      - historical: list of {periodo, valor} dicts (existing data)
+      - projected:  list of {periodo, valor, lower, upper} dicts
+      - slope:      change per period
+      - r_squared:  goodness of fit (0-1)
+      - direction:  'creciente' | 'decreciente' | 'estable'
+      - next_value: projected value for next period
+      - trend_pct:  slope as % of mean value
+    """
+    trend = temporal_trend(df, date_col, amount_col)
+    if len(trend) < 3:
+        return {}
+
+    x = np.arange(len(trend), dtype=float)
+    y = trend["valor"].astype(float).values
+
+    # Linear fit
+    coeffs = np.polyfit(x, y, 1)
+    slope, intercept = coeffs
+    y_fit = np.polyval(coeffs, x)
+
+    # R²
+    ss_res = np.sum((y - y_fit) ** 2)
+    ss_tot = np.sum((y - y.mean()) ** 2)
+    r2 = float(1 - ss_res / ss_tot) if ss_tot != 0 else 0.0
+
+    # Residual std for confidence band
+    residuals = y - y_fit
+    std_err = float(np.std(residuals))
+
+    # Historical points
+    historical = [
+        {"periodo": row["periodo"], "valor": float(row["valor"])}
+        for _, row in trend.iterrows()
+    ]
+
+    # Projected periods
+    last_date = trend["periodo"].iloc[-1]
+    projected = []
+    for i in range(1, periods_ahead + 1):
+        xi = len(trend) - 1 + i
+        proj_val = float(np.polyval(coeffs, xi))
+        try:
+            next_date = last_date + pd.DateOffset(months=i)
+        except Exception:
+            next_date = last_date
+        projected.append({
+            "periodo": next_date,
+            "valor":   round(proj_val, 2),
+            "lower":   round(proj_val - 1.96 * std_err, 2),
+            "upper":   round(proj_val + 1.96 * std_err, 2),
+        })
+
+    mean_val = float(y.mean()) if y.mean() != 0 else 1
+    trend_pct = float(slope / abs(mean_val) * 100)
+
+    if abs(trend_pct) < 1:
+        direction = "estable"
+    elif slope > 0:
+        direction = "creciente"
+    else:
+        direction = "decreciente"
+
+    return {
+        "historical":  historical,
+        "projected":   projected,
+        "slope":       round(float(slope), 4),
+        "r_squared":   round(r2, 4),
+        "direction":   direction,
+        "next_value":  projected[0]["valor"] if projected else None,
+        "trend_pct":   round(trend_pct, 2),
+        "periods_ahead": periods_ahead,
+    }
+
+
+def forecast_kpis(forecast: dict) -> list[dict[str, Any]]:
+    """Build KPI rows from a forecast result dict."""
+    if not forecast:
+        return []
+    direction_label = {
+        "creciente":  "📈 Tendencia creciente",
+        "decreciente":"📉 Tendencia decreciente",
+        "estable":    "➡️ Tendencia estable",
+    }.get(forecast.get("direction",""), "—")
+
+    kpis = [
+        {"kpi": "Dirección de tendencia",
+         "valor": direction_label,
+         "interpretacion": f"{abs(forecast.get('trend_pct',0)):.1f}% por período"},
+        {"kpi": "R² del modelo",
+         "valor": f"{forecast.get('r_squared',0):.2f}",
+         "interpretacion": "1.0 = ajuste perfecto · <0.5 = alta variabilidad"},
+        {"kpi": "Proyección próximo período",
+         "valor": f"{forecast.get('next_value',0):,.0f}",
+         "interpretacion": "Valor estimado según tendencia lineal"},
+    ]
+    for i, p in enumerate(forecast.get("projected", []), 1):
+        kpis.append({
+            "kpi": f"Proyección +{i} período{'s' if i>1 else ''}",
+            "valor": f"{p['valor']:,.0f}",
+            "interpretacion": f"Rango: {p['lower']:,.0f} — {p['upper']:,.0f}",
+        })
+    return kpis

@@ -256,3 +256,92 @@ def create_treemap(
     )
     fig.update_traces(textinfo="label+percent parent")
     return fig
+
+
+def create_forecast_chart(forecast: dict) -> "go.Figure":
+    """Render historical trend + linear projection with confidence band.
+
+    Args:
+        forecast: result dict from kpi_engine.forecast_trend()
+
+    Returns:
+        Plotly Figure with 4 traces:
+          1. Historical values (solid blue line)
+          2. Confidence band fill (light amber area)
+          3. Projected values (dashed amber line)
+          4. Vertical divider annotation
+    """
+    if not forecast or not forecast.get("historical"):
+        fig = go.Figure()
+        fig.update_layout(title="Sin datos suficientes para proyección.")
+        return fig
+
+    hist = forecast["historical"]
+    proj = forecast["projected"]
+
+    hist_x = [h["periodo"] for h in hist]
+    hist_y = [h["valor"]   for h in hist]
+    proj_x = [p["periodo"] for p in proj]
+    proj_y = [p["valor"]   for p in proj]
+    lower  = [p["lower"]   for p in proj]
+    upper  = [p["upper"]   for p in proj]
+
+    fig = go.Figure()
+
+    # Confidence band
+    fig.add_trace(go.Scatter(
+        x=proj_x + proj_x[::-1],
+        y=upper + lower[::-1],
+        fill="toself",
+        fillcolor="rgba(239,159,39,0.15)",
+        line=dict(color="rgba(0,0,0,0)"),
+        hoverinfo="skip",
+        showlegend=True,
+        name="Banda de confianza 95%",
+    ))
+
+    # Historical line
+    fig.add_trace(go.Scatter(
+        x=hist_x, y=hist_y,
+        mode="lines+markers",
+        name="Histórico",
+        line=dict(color=PALETTE[0], width=2.5),
+        marker=dict(size=5),
+    ))
+
+    # Projected line
+    # Connect last historical point to first projected
+    conn_x = [hist_x[-1]] + proj_x
+    conn_y = [hist_y[-1]] + proj_y
+    fig.add_trace(go.Scatter(
+        x=conn_x, y=conn_y,
+        mode="lines+markers",
+        name="Proyección",
+        line=dict(color=PALETTE[2], width=2.5, dash="dot"),
+        marker=dict(size=6, symbol="diamond"),
+    ))
+
+    # Vertical divider at last historical point
+    fig.add_vline(
+        x=hist_x[-1],
+        line_dash="dash",
+        line_color=PALETTE[7],
+        annotation_text="Hoy",
+        annotation_position="top right",
+    )
+
+    direction = forecast.get("direction", "")
+    r2 = forecast.get("r_squared", 0)
+    pct = abs(forecast.get("trend_pct", 0))
+    title = (f"Tendencia {'📈' if direction=='creciente' else '📉' if direction=='decreciente' else '➡️'} "
+             f"{direction} · {pct:.1f}% por período · R²={r2:.2f}")
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Período",
+        yaxis_title="Valor",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="right", x=1),
+    )
+    return fig

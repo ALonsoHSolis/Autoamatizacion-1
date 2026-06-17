@@ -67,6 +67,7 @@ from src.charts import (
     create_boxplot,
     create_category_chart,
     create_correlation_heatmap,
+    create_forecast_chart,
     create_null_heatmap,
     create_pareto_chart,
     create_status_chart,
@@ -80,6 +81,8 @@ from src.export_utils import export_excel, export_pdf, export_pptx
 from src.kpi_engine import (
     calculate_kpis,
     category_ranking,
+    forecast_kpis,
+    forecast_trend,
     kpis_to_frame,
     pareto_analysis,
     period_comparison,
@@ -544,6 +547,9 @@ def main() -> None:
                 figures_for_pdf["Distribución de montos"] = create_amount_distribution(df, amount_col)
             if len(df.select_dtypes(include="number").columns) >= 2:
                 figures_for_pdf["Matriz de correlación"] = create_correlation_heatmap(df)
+            forecast = st.session_state.get("forecast")
+            if forecast:
+                figures_for_pdf["Proyección de tendencia"] = create_forecast_chart(forecast)
             st.session_state["figures_for_pdf"] = figures_for_pdf
 
     (
@@ -746,6 +752,46 @@ def main() -> None:
                             value=f"${yoy['current_value']:,.0f}",
                             delta=delta_str,
                         )
+                st.divider()
+
+            if date_col:
+                st.subheader("Proyección de tendencia")
+                st.caption(
+                    "Regresión lineal sobre los períodos históricos. "
+                    "La banda sombreada representa el intervalo de confianza del 95%."
+                )
+                periods_ahead = st.slider(
+                    "Períodos a proyectar",
+                    min_value=1, max_value=12, value=3,
+                    key="forecast_periods",
+                )
+                forecast = forecast_trend(
+                    df, date_col, amount_col, periods_ahead=periods_ahead
+                )
+                if forecast:
+                    st.session_state["forecast"] = forecast
+                    f_kpis = forecast_kpis(forecast)
+                    if f_kpis:
+                        k_cols = st.columns(min(len(f_kpis), 3))
+                        for i, kpi in enumerate(f_kpis[:3]):
+                            k_cols[i].metric(
+                                label=kpi["kpi"],
+                                value=kpi["valor"],
+                                help=kpi["interpretacion"],
+                            )
+                    st.plotly_chart(
+                        create_forecast_chart(forecast),
+                        width="stretch",
+                        key="forecast_chart",
+                    )
+                    if len(f_kpis) > 3:
+                        with st.expander("Ver todas las proyecciones", expanded=False):
+                            proj_df = pd.DataFrame(forecast["projected"])
+                            proj_df.columns = ["Período","Valor proyectado",
+                                               "Límite inferior","Límite superior"]
+                            st.dataframe(proj_df, width="stretch", hide_index=True)
+                else:
+                    st.info("Se necesitan al menos 3 períodos históricos para proyectar.")
                 st.divider()
 
             st.subheader("Matriz de correlación")
