@@ -1,0 +1,372 @@
+DEFINICIONES - BA DATA INSIGHT TOOL
+===================================
+
+Este documento resume las definiciones principales de la aplicación BA Data Insight Tool.
+Está pensado como guía rápida para entender qué hace la app, qué significa cada concepto
+y cómo explicar el proyecto en un contexto Business Analyst / Data Analyst.
+
+
+1. DEFINICIÓN GENERAL DE LA APP
+-------------------------------
+
+BA Data Insight Tool:
+Aplicación web desarrollada con Python y Streamlit que permite cargar archivos Excel o CSV,
+analizar automáticamente los datos, calcular KPIs, detectar problemas de calidad, identificar
+anomalías, generar gráficos e interpretar resultados en lenguaje de negocio.
+
+Objetivo:
+Ayudar a usuarios de negocio, Business Analysts y Data Analysts a transformar planillas en
+información accionable sin tener que programar cada análisis desde cero.
+
+Usuario objetivo:
+- Business Analyst.
+- Data Analyst.
+- Equipos de finanzas.
+- Equipos de pagos.
+- Equipos de conciliaciones.
+- Equipos de operaciones.
+- Personas que trabajan con registros, clientes, usuarios o beneficiarios.
+
+
+2. DEFINICIONES DE ARCHIVOS Y DATOS
+-----------------------------------
+
+CSV:
+Archivo de texto tabular donde los datos están separados por comas, punto y coma u otro
+separador. Es común en exportaciones de sistemas.
+
+Excel:
+Archivo de planilla, normalmente con extensión .xlsx o .xls. Puede tener una o varias hojas.
+
+Dataset:
+Conjunto de datos cargado en la aplicación. En la app, el dataset se transforma en un
+DataFrame de pandas.
+
+DataFrame:
+Estructura tabular de pandas parecida a una hoja de cálculo. Tiene filas y columnas.
+
+Fila:
+Registro individual del dataset. Por ejemplo, una venta, un pago, una persona o una transacción.
+
+Columna:
+Campo del dataset. Por ejemplo, fecha, monto, estado, categoría, nombre, email o RUT.
+
+Valor nulo:
+Dato faltante o vacío dentro del dataset.
+
+Duplicado:
+Registro repetido. Puede afectar conteos, montos acumulados, rankings y conclusiones.
+
+
+3. DETECCIÓN AUTOMÁTICA DE COLUMNAS
+-----------------------------------
+
+Columna numérica:
+Columna que contiene números o valores convertibles a número. Se usa para montos, cantidades,
+edades, tickets, ingresos o egresos.
+
+Columna categórica:
+Columna de texto usada para agrupar datos. Ejemplos: categoría, unidad, canal, banco, segmento.
+
+Columna de fecha:
+Columna que representa tiempo. Ejemplos: fecha, fecha_pago, created_at, nacimiento.
+
+Columna de monto:
+Columna que contiene valores monetarios o importes. Ejemplos: monto, total, pago, pagado,
+venta, ingreso, egreso.
+
+Columna de estado:
+Columna que indica situación o condición del registro. Ejemplos: Pagado, Pendiente, Revisar,
+Conciliado, No conciliado.
+
+Columna ID:
+Columna que identifica registros de forma única o casi única. Ejemplos: id, transaction_id,
+comprobante, RUT, email.
+
+Columna de nombre:
+Columna que contiene nombres de personas, clientes, beneficiarios o apoderados.
+
+Detección sugerida:
+La app propone columnas automáticamente, pero el usuario puede cambiarlas manualmente desde
+la barra lateral.
+
+
+4. TIPOS DE ANÁLISIS
+--------------------
+
+Análisis general:
+Modo aplicable a cualquier archivo. Resume filas, columnas, tipos de datos, nulos, duplicados
+y estructura general.
+
+Análisis de ventas:
+Modo pensado para ventas, ingresos, tickets, clientes o unidades vendidas. Calcula ventas,
+ticket promedio, tendencia temporal y ranking por categoría.
+
+Análisis de pagos:
+Modo pensado para cuotas, transferencias, pagos esperados y pagos realizados. Calcula total
+esperado, total pagado, diferencia pendiente, avance de pago, pagos incompletos y sobrepagos.
+
+Análisis de conciliaciones:
+Modo pensado para movimientos bancarios, transacciones o saldos. Busca estados conciliados,
+movimientos pendientes, débitos, créditos, referencias faltantes y posibles descuadres.
+
+Análisis de registros/personas:
+Modo pensado para bases de personas, clientes, beneficiarios o usuarios. Revisa duplicados,
+emails inválidos, RUT inválidos, teléfonos sospechosos y registros incompletos.
+
+Análisis financiero simple:
+Modo pensado para ingresos, egresos, gastos o caja. Calcula ingresos, egresos, resultado neto,
+margen simple y categorías de mayor impacto.
+
+
+5. KPIs
+-------
+
+KPI:
+Indicador clave de desempeño. Resume una métrica importante para tomar decisiones.
+
+Cantidad de registros:
+Número total de filas analizadas.
+
+Columnas disponibles:
+Número total de campos del dataset.
+
+Datos faltantes:
+Porcentaje de celdas vacías en la base.
+
+Registros únicos:
+Cantidad de filas distintas después de considerar duplicados exactos.
+
+Monto total:
+Suma de la columna de monto seleccionada.
+
+Monto promedio:
+Promedio de los montos válidos.
+
+Mediana de monto:
+Valor central de los montos. Es útil cuando existen valores extremos.
+
+Monto mínimo:
+Menor valor detectado en la columna de monto.
+
+Monto máximo:
+Mayor valor detectado en la columna de monto.
+
+Variación último periodo:
+Cambio porcentual entre el último periodo y el periodo anterior.
+
+Categoría líder:
+Categoría que concentra mayor monto o mayor cantidad de registros.
+
+Estado principal:
+Estado más frecuente dentro del dataset.
+
+Total esperado:
+Monto que debería haberse recibido o registrado.
+
+Total pagado:
+Monto efectivamente registrado como pagado.
+
+Diferencia pendiente:
+Brecha entre total esperado y total pagado.
+
+Avance de pago:
+Porcentaje pagado respecto al total esperado.
+
+Resultado neto:
+Diferencia entre ingresos y egresos.
+
+Margen simple:
+Resultado neto dividido por ingresos.
+
+
+6. CALIDAD DE DATOS
+-------------------
+
+Calidad de datos:
+Nivel de confiabilidad, completitud y consistencia de la información.
+
+Advertencia Alta:
+Problema crítico que puede afectar directamente el análisis. Ejemplos: columna vacía,
+muchos valores nulos en campos clave.
+
+Advertencia Media:
+Problema relevante que requiere revisión. Ejemplos: duplicados, fechas inválidas,
+emails inválidos, RUT inválido.
+
+Advertencia Baja:
+Problema menor o de limpieza. Ejemplos: espacios extra, montos en cero, columnas con
+un solo valor.
+
+Fecha inválida:
+Valor que no puede interpretarse como fecha.
+
+Monto negativo:
+Valor monetario menor que cero. Puede ser válido en egresos, pero sospechoso en pagos o ventas.
+
+Monto en cero:
+Valor monetario igual a cero. Puede indicar ausencia de pago, error de carga o caso especial.
+
+Email inválido:
+Correo que no cumple un formato básico usuario@dominio.extensión.
+
+RUT chileno inválido:
+RUT que no pasa la validación de dígito verificador.
+
+Teléfono sospechoso:
+Número con largo inusual para un teléfono.
+
+Espacios extra:
+Texto con espacios al inicio o final. Puede afectar agrupaciones y cruces de datos.
+
+
+7. ANOMALÍAS
+------------
+
+Anomalía:
+Registro cuyo valor se aleja significativamente del comportamiento normal del dataset.
+
+Media:
+Promedio de una serie numérica.
+
+Desviación estándar:
+Medida de dispersión. Indica cuánto se alejan los valores respecto al promedio.
+
+Z-score:
+Cantidad de desviaciones estándar que separan un valor del promedio.
+
+Umbral de anomalía:
+Cantidad mínima de desviaciones estándar para marcar un valor como sospechoso. Por ejemplo,
+2 desviaciones estándar.
+
+Límite inferior:
+Valor mínimo esperado según promedio y desviación estándar.
+
+Límite superior:
+Valor máximo esperado según promedio y desviación estándar.
+
+Tipo de desvío:
+Indica si el valor está sobre o bajo el rango esperado.
+
+
+8. GRÁFICOS
+-----------
+
+Tendencia temporal:
+Gráfico de línea que muestra la evolución del monto o cantidad en el tiempo.
+
+Ranking por categoría:
+Gráfico de barras que muestra las categorías con mayor monto o volumen.
+
+Distribución por estado:
+Gráfico de dona o torta que muestra la participación de cada estado.
+
+Histograma:
+Gráfico que muestra cómo se distribuyen los montos.
+
+Boxplot:
+Gráfico que ayuda a visualizar valores extremos.
+
+Mapa de datos faltantes:
+Visualización simple para identificar dónde hay valores nulos.
+
+
+9. INSIGHTS EJECUTIVOS
+----------------------
+
+Insight:
+Conclusión útil para negocio basada en datos.
+
+Resumen ejecutivo:
+Texto breve que explica el estado general del dataset y los principales resultados.
+
+Hallazgo:
+Dato relevante detectado por el análisis. Ejemplo: una categoría concentra el mayor monto.
+
+Riesgo:
+Situación que puede afectar la toma de decisiones. Ejemplo: duplicados, pendientes,
+datos faltantes o anomalías.
+
+Hipótesis:
+Posible explicación de un patrón detectado. No es una verdad confirmada, sino algo a investigar.
+
+Pregunta de negocio:
+Pregunta que ayuda a profundizar el análisis. Ejemplo: ¿Qué explica la caída del periodo?
+
+Acción recomendada:
+Siguiente paso concreto para el negocio. Ejemplo: revisar pagos pendientes de la unidad con
+mayor brecha.
+
+Próximo paso:
+Recomendación operativa para continuar el análisis o convertirlo en control recurrente.
+
+
+10. EXPORTACIONES
+-----------------
+
+Exportación a Excel:
+Archivo descargable con pestañas de resumen, KPIs, calidad de datos, anomalías, rankings,
+tendencias e insights.
+
+Exportación a PDF:
+Reporte ejecutivo simple con resumen del dataset, KPIs principales e insights.
+
+
+11. MÓDULOS DEL PROYECTO
+------------------------
+
+app.py:
+Archivo principal de Streamlit. Controla la interfaz, carga de archivo, sidebar, visualización,
+KPIs, gráficos, insights y botones de descarga.
+
+src/data_loader.py:
+Lee archivos CSV y Excel. También obtiene hojas de Excel y normaliza columnas.
+
+src/data_profiler.py:
+Detecta tipos de columnas y genera advertencias de calidad de datos.
+
+src/kpi_engine.py:
+Calcula KPIs generales y específicos por tipo de análisis.
+
+src/anomaly_detection.py:
+Detecta valores anómalos usando media, desviación estándar y z-score.
+
+src/charts.py:
+Crea gráficos interactivos con Plotly.
+
+src/business_insights.py:
+Genera contexto analítico, insights ejecutivos y texto legible para usuarios de negocio.
+
+src/export_utils.py:
+Genera archivos Excel y PDF para descargar resultados.
+
+src/utils.py:
+Contiene funciones auxiliares para limpiar nombres, convertir números, convertir fechas,
+formatear valores y validar RUT chileno.
+
+tests/:
+Carpeta con pruebas automatizadas de funciones clave.
+
+sample_data/:
+Carpeta con archivos de ejemplo para probar la aplicación.
+
+
+12. CÓMO EXPLICAR LA APP EN UNA ENTREVISTA
+------------------------------------------
+
+Esta aplicación demuestra capacidad para:
+
+- Cargar y procesar datos reales desde Excel o CSV.
+- Detectar automáticamente estructura de datos.
+- Evaluar calidad de datos antes de analizar.
+- Calcular KPIs relevantes para negocio.
+- Identificar anomalías y registros sospechosos.
+- Crear visualizaciones interactivas.
+- Transformar resultados técnicos en conclusiones ejecutivas.
+- Exportar resultados para revisión o presentación.
+
+Frase sugerida:
+"Desarrollé una herramienta en Python y Streamlit para que equipos de negocio puedan cargar
+planillas operativas, detectar problemas de calidad, calcular KPIs, identificar anomalías y
+obtener insights ejecutivos listos para la toma de decisiones."
+

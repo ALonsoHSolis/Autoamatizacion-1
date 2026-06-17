@@ -1,0 +1,11 @@
+nombre,unidad,monto_esperado,monto_pagado,estado,fecha_pago,comprobante
+Ana Perez,Tropa,50000,50000,Pagado,2025-01-10,CMP-001
+Luis Soto,Manada,50000,25000,Pendiente,2025-01-12,CMP-002
+Camila Rojas,Ruta,60000,0,Pendiente,,CMP-003
+Pedro Diaz,Tropa,50000,70000,Revisar,2025-01-15,CMP-004
+Maria Silva,Manada,50000,50000,Pagado,fecha mala,CMP-005
+Ana Perez,Tropa,50000,50000,Pagado,2025-01-10,CMP-001
+Jorge Muñoz,Ruta,60000,-10000,Revisar,2025-01-20,
+Paula Vera,Tropa,50000,50000,Pagado,2025-02-02,CMP-008
+Diego Torres,Manada,50000,0,Pendiente,,CMP-009
+Sofia Castro,Ruta,60000,60000,Pagado,2025-02-10,CMP-010
