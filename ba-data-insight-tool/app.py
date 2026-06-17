@@ -538,7 +538,15 @@ def main() -> None:
 
             figures_for_pdf = {}
             if date_col:
-                figures_for_pdf["Tendencia temporal"] = create_temporal_chart(df, date_col, amount_col)
+                existing_forecast = st.session_state.get("forecast")
+                if not existing_forecast:
+                    existing_forecast = forecast_trend(df, date_col, amount_col, periods_ahead=3)
+                    if existing_forecast:
+                        st.session_state["forecast"] = existing_forecast
+                if existing_forecast:
+                    figures_for_pdf["Tendencia temporal"] = create_forecast_chart(existing_forecast)
+                else:
+                    figures_for_pdf["Tendencia temporal"] = create_temporal_chart(df, date_col, amount_col)
             if category_col:
                 figures_for_pdf["Ranking por categoría"] = create_category_chart(df, category_col, amount_col)
             if status_col:
@@ -547,9 +555,6 @@ def main() -> None:
                 figures_for_pdf["Distribución de montos"] = create_amount_distribution(df, amount_col)
             if len(df.select_dtypes(include="number").columns) >= 2:
                 figures_for_pdf["Matriz de correlación"] = create_correlation_heatmap(df)
-            forecast = st.session_state.get("forecast")
-            if forecast:
-                figures_for_pdf["Proyección de tendencia"] = create_forecast_chart(forecast)
             st.session_state["figures_for_pdf"] = figures_for_pdf
 
     (
@@ -876,9 +881,15 @@ def main() -> None:
                 "Tendencia temporal": temporal_trend(df, date_col, amount_col) if date_col else pd.DataFrame(),
             }
             excel_bytes = export_excel(export_sheets, insights_text)
+            pdf_figures = st.session_state.get("figures_for_pdf", {}).copy()
+            saved_forecast = st.session_state.get("forecast")
+            if saved_forecast:
+                pdf_figures["Tendencia temporal"] = create_forecast_chart(
+                    saved_forecast
+                )
             pdf_bytes = export_pdf(
                 APP_TITLE, profile, kpis_df, insights,
-                figures=st.session_state.get("figures_for_pdf", {}))
+                figures=pdf_figures)
             col_a, col_b = st.columns(2)
             col_a.download_button(
                 "Descargar Excel",
@@ -909,7 +920,7 @@ def main() -> None:
                             profile=profile,
                             kpis=kpis_df,
                             insights=insights,
-                            figures=st.session_state.get("figures_for_pdf", {}),
+                            figures=pdf_figures,
                             quality_score=st.session_state.get("quality_score"),
                         )
                         st.download_button(

@@ -279,9 +279,12 @@ def create_forecast_chart(forecast: dict) -> "go.Figure":
     hist = forecast["historical"]
     proj = forecast["projected"]
 
-    hist_x = [h["periodo"] for h in hist]
+    def _to_pydatetime(value):
+        return value.to_pydatetime() if hasattr(value, "to_pydatetime") else value
+
+    hist_x = [_to_pydatetime(h["periodo"]) for h in hist]
     hist_y = [h["valor"]   for h in hist]
-    proj_x = [p["periodo"] for p in proj]
+    proj_x = [_to_pydatetime(p["periodo"]) for p in proj]
     proj_y = [p["valor"]   for p in proj]
     lower  = [p["lower"]   for p in proj]
     upper  = [p["upper"]   for p in proj]
