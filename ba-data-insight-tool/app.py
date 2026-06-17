@@ -76,7 +76,7 @@ from src.charts import (
 )
 from src.data_loader import get_excel_sheets, load_data, load_google_sheet
 from src.data_profiler import calculate_quality_score, profile_dataset, quality_warnings, warnings_to_frame
-from src.export_utils import export_excel, export_pdf
+from src.export_utils import export_excel, export_pdf, export_pptx
 from src.kpi_engine import (
     calculate_kpis,
     category_ranking,
@@ -500,6 +500,7 @@ def main() -> None:
     warnings = quality_warnings(df, detected)
     warnings_df = warnings_to_frame(warnings)
     quality_score = calculate_quality_score(profile, warnings)
+    st.session_state["quality_score"] = quality_score
 
     if not st.session_state.get("analysis_has_run", False):
         st.info("Previsualiza los datos y revisa la calidad. Luego confirma las columnas en el panel lateral y presiona **Ejecutar análisis**.")
@@ -849,6 +850,33 @@ def main() -> None:
                 width="stretch",
                 key="download_pdf",
             )
+
+            st.divider()
+            st.subheader("PowerPoint ejecutivo")
+            st.caption("Presentación lista para compartir con stakeholders. "
+                       "Incluye portada, KPIs, gráficos y insights.")
+            if st.button("Generar PowerPoint", key="btn_pptx"):
+                with st.spinner("Generando presentación..."):
+                    try:
+                        pptx_bytes = export_pptx(
+                            title=APP_TITLE,
+                            profile=profile,
+                            kpis=kpis_df,
+                            insights=insights,
+                            figures=st.session_state.get("figures_for_pdf", {}),
+                            quality_score=st.session_state.get("quality_score"),
+                        )
+                        st.download_button(
+                            label="Descargar .pptx",
+                            data=pptx_bytes,
+                            file_name="reporte_ba_insight.pptx",
+                            mime="application/vnd.openxmlformats-officedocument"
+                                 ".presentationml.presentation",
+                            key="download_pptx",
+                        )
+                        st.success("Presentación lista. Haz clic en Descargar .pptx")
+                    except Exception as e:
+                        st.error(f"Error al generar PowerPoint: {e}")
 
 
 if __name__ == "__main__":
