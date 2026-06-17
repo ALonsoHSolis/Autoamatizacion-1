@@ -532,6 +532,19 @@ def main() -> None:
             insights = business_insights.generate_insights(df, context=insight_context)
             insights_text = business_insights.insights_to_text(insights)
 
+            figures_for_pdf = {}
+            if date_col:
+                figures_for_pdf["Tendencia temporal"] = create_temporal_chart(df, date_col, amount_col)
+            if category_col:
+                figures_for_pdf["Ranking por categoría"] = create_category_chart(df, category_col, amount_col)
+            if status_col:
+                figures_for_pdf["Distribución por estado"] = create_status_chart(df, status_col, amount_col)
+            if amount_col:
+                figures_for_pdf["Distribución de montos"] = create_amount_distribution(df, amount_col)
+            if len(df.select_dtypes(include="number").columns) >= 2:
+                figures_for_pdf["Matriz de correlación"] = create_correlation_heatmap(df)
+            st.session_state["figures_for_pdf"] = figures_for_pdf
+
     (
         summary_tab,
         quality_tab,
@@ -816,7 +829,9 @@ def main() -> None:
                 "Tendencia temporal": temporal_trend(df, date_col, amount_col) if date_col else pd.DataFrame(),
             }
             excel_bytes = export_excel(export_sheets, insights_text)
-            pdf_bytes = export_pdf(APP_TITLE, profile, kpis_df, insights)
+            pdf_bytes = export_pdf(
+                APP_TITLE, profile, kpis_df, insights,
+                figures=st.session_state.get("figures_for_pdf", {}))
             col_a, col_b = st.columns(2)
             col_a.download_button(
                 "Descargar Excel",

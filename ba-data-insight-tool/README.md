@@ -1,5 +1,7 @@
 # BA Data Insight Tool
 
+[![CI](https://github.com/ALonsoHSolis/Autoamatizacion-1/actions/workflows/ci.yml/badge.svg)](https://github.com/ALonsoHSolis/Autoamatizacion-1/actions/workflows/ci.yml)
+
 BA Data Insight Tool es una aplicación web en Streamlit para convertir archivos Excel o CSV en un análisis ejecutivo de negocio. Está pensada para equipos que reciben bases operativas, pagos, ventas, conciliaciones, registros de personas o datos financieros simples y necesitan entender rápidamente qué está pasando, dónde está el impacto y qué revisar antes de tomar decisiones.
 
 ## Qué problema resuelve
