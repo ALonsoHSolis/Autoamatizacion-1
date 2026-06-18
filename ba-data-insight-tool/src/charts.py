@@ -348,3 +348,40 @@ def create_forecast_chart(forecast: dict) -> "go.Figure":
                     y=1.02, xanchor="right", x=1),
     )
     return fig
+
+
+def create_budget_chart(comparison_df: "pd.DataFrame") -> "go.Figure":
+    """Grouped bar chart: Real vs Presupuesto by group."""
+    import plotly.graph_objects as go
+    if comparison_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="Sin datos para comparar.")
+        return fig
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="Real",
+        x=comparison_df["grupo"],
+        y=comparison_df["real"],
+        marker_color=PALETTE[0],
+        text=comparison_df["cumplimiento_pct"].apply(
+            lambda v: f"{v:.0f}%" if v is not None else ""),
+        textposition="outside",
+    ))
+    fig.add_trace(go.Bar(
+        name="Presupuesto",
+        x=comparison_df["grupo"],
+        y=comparison_df["presupuesto"],
+        marker_color=PALETTE[2],
+        opacity=0.7,
+    ))
+    fig.update_layout(
+        title="Real vs Presupuesto por categoría",
+        barmode="group",
+        xaxis_title="",
+        yaxis_title="Valor",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="right", x=1),
+    )
+    return fig

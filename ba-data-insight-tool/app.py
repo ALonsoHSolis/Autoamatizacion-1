@@ -65,6 +65,7 @@ from src.anomaly_detection import detect_anomalies
 from src.charts import (
     create_amount_distribution,
     create_boxplot,
+    create_budget_chart,
     create_category_chart,
     create_correlation_heatmap,
     create_forecast_chart,
@@ -81,6 +82,7 @@ from src.export_utils import export_excel, export_pdf, export_pptx
 from src.kpi_engine import (
     calculate_kpis,
     category_ranking,
+    compare_vs_budget,
     forecast_kpis,
     forecast_trend,
     kpis_to_frame,
@@ -563,6 +565,7 @@ def main() -> None:
         numeric_tab,
         category_tab,
         pivot_tab,
+        budget_tab,
         pareto_tab,
         advanced_tab,
         insights_tab,
@@ -575,6 +578,7 @@ def main() -> None:
             "Análisis numérico",
             "Categorías y estados",
             "Tabla pivot",
+            "vs Presupuesto",
             "Pareto / ABC",
             "Análisis avanzado",
             "Insights automáticos",
@@ -699,6 +703,75 @@ def main() -> None:
                         key="pivot_download")
                 except Exception as e:
                     st.warning(f"No se pudo generar el pivot: {e}")
+
+    with budget_tab:
+        st.subheader("Comparación Real vs Presupuesto")
+        st.caption(
+            "Sube un archivo de presupuesto con las mismas categorías "
+            "que el dataset principal. La app compara montos reales vs esperados."
+        )
+        if not analysis_ready:
+            st.info("Ejecuta primero el análisis del archivo principal.")
+        else:
+            budget_file = st.file_uploader(
+                "Archivo de presupuesto (CSV o Excel)",
+                type=["csv","xlsx","xls"],
+                key="budget_uploader",
+            )
+            if budget_file:
+                try:
+                    df_budget = load_data(budget_file, budget_file.name)
+                    st.success(f"Presupuesto cargado: {len(df_budget)} filas · "
+                               f"{len(df_budget.columns)} columnas")
+
+                    b1, b2, b3 = st.columns(3)
+                    budget_group = b1.selectbox(
+                        "Columna de agrupación (presupuesto)",
+                        df_budget.columns.tolist(), key="bg_group")
+                    budget_amount = b2.selectbox(
+                        "Columna de monto (presupuesto)",
+                        df_budget.columns.tolist(), key="bg_amount")
+                    actual_group = b3.selectbox(
+                        "Columna de agrupación (real)",
+                        df.columns.tolist(),
+                        index=df.columns.tolist().index(category_col)
+                        if category_col in df.columns else 0,
+                        key="bg_actual_group")
+
+                    if st.button("Comparar", key="btn_compare"):
+                        comparison = compare_vs_budget(
+                            df, df_budget,
+                            group_col=actual_group,
+                            actual_amount_col=amount_col or df.select_dtypes(
+                                include="number").columns[0],
+                            budget_amount_col=budget_amount,
+                        )
+                        if not comparison.empty:
+                            total_real  = comparison["real"].sum()
+                            total_ppto  = comparison["presupuesto"].sum()
+                            varianza    = total_real - total_ppto
+                            cumplimiento = total_real/total_ppto*100 if total_ppto else 0
+
+                            m1,m2,m3,m4 = st.columns(4)
+                            m1.metric("Total real",       f"${total_real:,.0f}")
+                            m2.metric("Total presupuesto",f"${total_ppto:,.0f}")
+                            m3.metric("Varianza",
+                                      f"${varianza:,.0f}",
+                                      delta=f"{varianza/total_ppto*100:+.1f}%"
+                                      if total_ppto else None)
+                            m4.metric("Cumplimiento",     f"{cumplimiento:.1f}%")
+
+                            st.plotly_chart(create_budget_chart(comparison),
+                                            width="stretch", key="budget_chart")
+                            st.dataframe(comparison, width="stretch",
+                                         hide_index=True)
+                        else:
+                            st.warning("No se encontraron categorías comunes "
+                                       "entre los dos archivos.")
+                except Exception as e:
+                    st.error(f"Error al cargar el presupuesto: {e}")
+            else:
+                st.info("Sube el archivo de presupuesto para comenzar.")
 
     with pareto_tab:
         st.subheader("Análisis de Pareto / ABC")

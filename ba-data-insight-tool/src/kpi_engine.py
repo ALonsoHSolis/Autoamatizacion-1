@@ -525,3 +525,49 @@ def forecast_kpis(forecast: dict) -> list[dict[str, Any]]:
             "interpretacion": f"Rango: {p['lower']:,.0f} — {p['upper']:,.0f}",
         })
     return kpis
+
+
+def compare_vs_budget(
+    df_actual: pd.DataFrame,
+    df_budget: pd.DataFrame,
+    group_col: str,
+    actual_amount_col: str,
+    budget_amount_col: str,
+) -> pd.DataFrame:
+    """Compare actual vs budget aggregated by group_col.
+
+    Returns a DataFrame with columns:
+      grupo, real, presupuesto, varianza, varianza_pct, cumplimiento_pct
+    """
+    from .utils import parse_numeric_series
+
+    actual = df_actual.copy()
+    budget = df_budget.copy()
+
+    actual["_real"] = parse_numeric_series(actual[actual_amount_col])
+    budget["_ppto"] = parse_numeric_series(budget[budget_amount_col])
+
+    # Normalize group column for joining
+    actual["_grupo"] = actual[group_col].astype(str).str.strip().str.lower()
+    budget["_grupo"] = budget[group_col].astype(str).str.strip().str.lower()
+
+    agg_real = actual.groupby("_grupo", as_index=False)["_real"].sum()
+    agg_ppto = budget.groupby("_grupo", as_index=False)["_ppto"].sum()
+
+    merged = agg_real.merge(agg_ppto, on="_grupo", how="outer").fillna(0)
+    merged["varianza"] = merged["_real"] - merged["_ppto"]
+    merged["varianza_pct"] = (
+        merged.apply(
+            lambda r: round(r["varianza"] / r["_ppto"] * 100, 1)
+            if r["_ppto"] != 0 else None, axis=1
+        )
+    )
+    merged["cumplimiento_pct"] = (
+        merged.apply(
+            lambda r: round(r["_real"] / r["_ppto"] * 100, 1)
+            if r["_ppto"] != 0 else None, axis=1
+        )
+    )
+    merged.columns = ["grupo", "real", "presupuesto",
+                      "varianza", "varianza_pct", "cumplimiento_pct"]
+    return merged.sort_values("real", ascending=False).reset_index(drop=True)
