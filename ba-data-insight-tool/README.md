@@ -1,8 +1,28 @@
 # BA Data Insight Tool
 
 [![CI](https://github.com/ALonsoHSolis/Autoamatizacion-1/actions/workflows/ci.yml/badge.svg)](https://github.com/ALonsoHSolis/Autoamatizacion-1/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-red?logo=streamlit)
+![pandas](https://img.shields.io/badge/pandas-2.2+-green?logo=pandas)
 
 BA Data Insight Tool es una aplicación web en Streamlit para convertir archivos Excel o CSV en un análisis ejecutivo de negocio. Está pensada para equipos que reciben bases operativas, pagos, ventas, conciliaciones, registros de personas o datos financieros simples y necesitan entender rápidamente qué está pasando, dónde está el impacto y qué revisar antes de tomar decisiones.
+
+## ✨ Funcionalidades principales
+
+| Módulo | Descripción |
+|--------|-------------|
+| 📊 **6 modos de análisis** | General, Ventas, Pagos, Conciliaciones, Registros, Financiero |
+| 🔍 **Calidad de datos** | Scoring 0-100, 13 validaciones, RUT chileno, emails, fechas |
+| 📈 **Forecasting** | Proyección lineal con banda de confianza 95%, slider de períodos |
+| 🎯 **Pareto / ABC** | Clasificación automática A/B/C con gráfico acumulado |
+| 💰 **vs Presupuesto** | Variance analysis: real vs esperado por categoría |
+| 🔗 **Correlaciones** | Matriz Pearson para detectar relaciones entre variables |
+| 🌊 **Waterfall** | Contribución de cada categoría al total |
+| 🗂️ **Pivot dinámico** | Tabla cruzada con agregación configurable en app |
+| 🤖 **IA opcional** | Insights ejecutivos con Claude (Anthropic API) |
+| 📄 **Exportación** | PDF con gráficos · PowerPoint ejecutivo · Excel multi-pestaña |
+| 🔗 **Google Sheets** | Carga directa desde URL pública sin descargar |
+| 🧪 **30+ tests** | pytest con integración end-to-end sobre sample_data |
 
 ## Qué problema resuelve
 
@@ -17,7 +37,7 @@ Muchos procesos de negocio dependen de planillas con datos incompletos, formatos
 
 ## Funcionalidades
 
-- Carga de archivos CSV, XLSX y XLS.
+- Carga de archivos CSV, XLSX y XLS, o directo desde una URL pública de Google Sheets.
 - Selector de hoja cuando el Excel contiene múltiples hojas.
 - Detección automática de columnas numéricas, categóricas, fechas, montos, estados, IDs, nombres, emails, teléfonos y RUT.
 - Ajuste manual de columnas detectadas.
@@ -29,29 +49,37 @@ Muchos procesos de negocio dependen de planillas con datos incompletos, formatos
   - Registros/personas.
   - Financiero simple.
 - KPIs generales y específicos por tipo de análisis.
-- Revisión de calidad de datos con severidad Alta, Media y Baja.
+- Revisión de calidad de datos con severidad Alta, Media y Baja, y un score 0-100.
 - Validación de RUT chileno.
 - Detección de anomalías por media y desviación estándar.
+- Forecasting con regresión lineal, banda de confianza del 95 % y proyección configurable.
+- Análisis de Pareto / ABC con clasificación automática.
+- Comparación Real vs Presupuesto por categoría.
+- Tabla pivot dinámica configurable desde la app.
 - Gráficos interactivos con Plotly.
 - Insights ejecutivos locales, cuantificados y accionables.
 - Capa opcional de IA con `ANTHROPIC_API_KEY`, enviando solo agregados y no el archivo completo.
-- Exportación a Excel y PDF ejecutivo.
+- Exportación a Excel, PDF ejecutivo (con gráficos embebidos) y PowerPoint ejecutivo.
 - Datos demo con errores intencionales.
 - Tests con pytest.
 
-## Stack tecnológico
+## 🛠️ Stack tecnológico
 
-- Python 3.11+
-- Streamlit
-- pandas
-- numpy
-- openpyxl
-- plotly
-- XlsxWriter
-- reportlab
-- python-dotenv
-- anthropic opcional
-- pytest
+| Categoría | Tecnologías |
+|-----------|-------------|
+| Core | Python 3.11+ · pandas · numpy |
+| UI | Streamlit |
+| Visualización | Plotly |
+| Exports | reportlab · python-pptx · XlsxWriter · kaleido |
+| IA | Anthropic Claude API (opcional) |
+| Testing | pytest |
+| CI/CD | GitHub Actions |
+
+> También se apoya en `openpyxl` (lectura de Excel) y `python-dotenv` (variables de entorno).
+
+## 📸 Capturas de pantalla
+
+> 💡 *Para ver la app en acción, clona el repositorio y ejecuta `streamlit run app.py` con los archivos de `sample_data/`.*
 
 ## Instalación
 
@@ -93,7 +121,7 @@ Para probar:
 4. Elige el tipo de análisis correspondiente.
 5. Presiona `Ejecutar análisis`.
 6. Revisa KPIs, gráficos, calidad, anomalías e insights.
-7. Descarga Excel o PDF.
+7. Descarga Excel, PDF o PowerPoint.
 
 ## IA opcional
 
@@ -165,9 +193,16 @@ Puedes presentar este proyecto como una herramienta interna para acelerar diagn�
 ## Próximas mejoras
 
 - Plantillas de reglas por industria o proceso.
-- Comparación contra presupuesto o periodo externo.
 - Persistencia de análisis históricos.
 - Autenticación para despliegue interno.
-- Reportes PDF con gráficos embebidos.
 - Configuración avanzada de reglas de calidad.
-- Integración con bases de datos o Google Sheets.
+- Integración con más fuentes de datos externas.
+
+## 💼 Valor para BA/DA
+
+Este proyecto demuestra capacidad para:
+- Diseñar herramientas analíticas orientadas a usuarios de negocio
+- Calcular KPIs, detectar anomalías y generar insights accionables  
+- Implementar análisis avanzados: forecasting, clustering, correlaciones
+- Exportar resultados en formatos ejecutivos (PDF, PowerPoint, Excel)
+- Desarrollar con buenas prácticas: tests, CI/CD, documentación
