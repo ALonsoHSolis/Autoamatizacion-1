@@ -67,7 +67,10 @@ from src.charts import (
     create_boxplot,
     create_budget_chart,
     create_category_chart,
+    create_cluster_profiles_chart,
+    create_cluster_scatter,
     create_correlation_heatmap,
+    create_elbow_chart,
     create_forecast_chart,
     create_null_heatmap,
     create_pareto_chart,
@@ -76,6 +79,7 @@ from src.charts import (
     create_treemap,
     create_waterfall,
 )
+from src.clustering import auto_cluster
 from src.data_loader import get_excel_sheets, load_data, load_google_sheet
 from src.data_profiler import calculate_quality_score, profile_dataset, quality_warnings, warnings_to_frame
 from src.export_utils import export_excel, export_pdf, export_pptx
@@ -568,6 +572,7 @@ def main() -> None:
         budget_tab,
         pareto_tab,
         advanced_tab,
+        clustering_tab,
         insights_tab,
         recommendations_tab,
         downloads_tab,
@@ -581,6 +586,7 @@ def main() -> None:
             "vs Presupuesto",
             "Pareto / ABC",
             "Análisis avanzado",
+            "Clustering",
             "Insights automáticos",
             "Recomendaciones",
             "Descargas",
@@ -911,6 +917,95 @@ def main() -> None:
                     width='stretch',
                     key="treemap_chart",
                 )
+
+    with clustering_tab:
+        st.subheader("Clustering automático de segmentos")
+        st.caption(
+            "Agrupa automáticamente los registros en segmentos "
+            "similares usando K-means. No requiere columna de "
+            "categoría — detecta patrones ocultos en los datos."
+        )
+        if not analysis_ready:
+            st.info("Ejecuta el análisis para usar el clustering.")
+        else:
+            num_cols = [c for c in df.columns
+                        if pd.api.types.is_numeric_dtype(df[c])]
+            if len(num_cols) < 2:
+                st.warning("Se necesitan al menos 2 columnas "
+                           "numéricas para clustering.")
+            else:
+                c1, c2 = st.columns(2)
+                k_mode = c1.radio(
+                    "Número de clusters",
+                    ["Automático (método del codo)", "Manual"],
+                    key="k_mode", horizontal=True)
+                k_manual = c2.slider(
+                    "K manual", 2, 8, 3,
+                    key="k_manual",
+                    disabled=(k_mode == "Automático (método del codo)"))
+
+                selected_cols = st.multiselect(
+                    "Columnas para clustering",
+                    num_cols, default=num_cols[:min(4, len(num_cols))],
+                    key="cluster_cols")
+
+                if st.button("Ejecutar clustering", key="btn_cluster"):
+                    with st.spinner("Calculando segmentos..."):
+                        n = ("auto" if "Automático" in k_mode
+                             else k_manual)
+                        result = auto_cluster(
+                            df, n_clusters=n,
+                            cols=selected_cols or None)
+
+                    if "error" in result:
+                        st.error(result["error"])
+                    else:
+                        st.session_state["cluster_result"] = result
+
+                result = st.session_state.get("cluster_result")
+                if result and "error" not in result:
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Segmentos detectados",
+                              result["n_clusters"])
+                    m2.metric("Silhouette score",
+                              result["silhouette"] or "N/A",
+                              help="Cercano a 1 = clusters bien separados")
+                    m3.metric("Registros analizados",
+                              len(result["labels"]))
+
+                    st.plotly_chart(
+                        create_elbow_chart(
+                            result["k_range"], result["inertias"]),
+                        width="stretch", key="elbow_chart")
+
+                    num_cols_result = result["numeric_cols"]
+                    if len(num_cols_result) >= 2:
+                        st.subheader("Dispersión por segmento")
+                        ea, eb = st.columns(2)
+                        ax = ea.selectbox(
+                            "Eje X", num_cols_result,
+                            key="cl_x")
+                        ay = eb.selectbox(
+                            "Eje Y", num_cols_result,
+                            index=min(1, len(num_cols_result)-1),
+                            key="cl_y")
+                        df_labeled = result["df_with_labels"]
+                        st.plotly_chart(
+                            create_cluster_scatter(
+                                df_labeled, ax, ay),
+                            width="stretch", key="cluster_scatter")
+
+                    st.subheader("Perfil de cada segmento")
+                    st.plotly_chart(
+                        create_cluster_profiles_chart(
+                            result["profiles"]),
+                        width="stretch", key="cluster_profiles")
+
+                    with st.expander("Ver tabla de perfiles",
+                                     expanded=False):
+                        st.dataframe(result["profiles"],
+                                     width="stretch",
+                                     hide_index=True)
 
     with insights_tab:
         st.subheader("Insights automáticos")

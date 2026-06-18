@@ -385,3 +385,59 @@ def create_budget_chart(comparison_df: "pd.DataFrame") -> "go.Figure":
                     y=1.02, xanchor="right", x=1),
     )
     return fig
+
+
+def create_elbow_chart(k_range: list, inertias: list) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=list(k_range), y=inertias,
+        mode="lines+markers",
+        line=dict(color=PALETTE[0], width=2),
+        marker=dict(size=8),
+        name="Inercia",
+    ))
+    fig.update_layout(
+        title="Método del codo — número óptimo de clusters",
+        xaxis_title="Número de clusters (K)",
+        yaxis_title="Inercia",
+        hovermode="x unified",
+    )
+    return fig
+
+
+def create_cluster_scatter(
+    df_labeled: pd.DataFrame,
+    col_x: str,
+    col_y: str,
+) -> go.Figure:
+    fig = px.scatter(
+        df_labeled, x=col_x, y=col_y,
+        color="cluster",
+        color_discrete_sequence=PALETTE,
+        title=f"Clusters: {col_x} vs {col_y}",
+        hover_data=df_labeled.columns.tolist(),
+    )
+    fig.update_traces(marker=dict(size=8, opacity=0.8))
+    fig.update_layout(legend_title="Segmento")
+    return fig
+
+
+def create_cluster_profiles_chart(profiles: pd.DataFrame) -> go.Figure:
+    numeric_cols = [c for c in profiles.columns
+                    if c not in ["segmento", "registros", "pct"]]
+    fig = go.Figure()
+    for i, col in enumerate(numeric_cols):
+        fig.add_trace(go.Bar(
+            name=col,
+            x=profiles["segmento"],
+            y=profiles[col],
+            marker_color=PALETTE[i % len(PALETTE)],
+        ))
+    fig.update_layout(
+        title="Perfil promedio por segmento",
+        barmode="group",
+        xaxis_title="",
+        yaxis_title="Valor promedio",
+        legend_title="Variable",
+    )
+    return fig
