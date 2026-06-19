@@ -487,3 +487,41 @@ def create_rfm_segment_chart(summary_df: pd.DataFrame) -> go.Figure:
                     y=1.02, xanchor="right", x=1),
     )
     return fig
+
+
+def create_fuzzy_groups_chart(groups_df: pd.DataFrame) -> go.Figure:
+    """Horizontal bar chart of variants within each duplicate group.
+
+    Bars colored teal mark the suggested canonical value;
+    coral marks the variants to be replaced.
+    """
+    if groups_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="No se detectaron categorías duplicadas.")
+        return fig
+
+    plot_df = groups_df.copy()
+    plot_df["label"] = (
+        "Grupo " + plot_df["grupo"].astype(str) + ": " + plot_df["valor"]
+    )
+    colors = [
+        PALETTE[1] if canon else PALETTE[3]
+        for canon in plot_df["es_canonico"]
+    ]
+
+    fig = go.Figure(go.Bar(
+        x=plot_df["frecuencia"],
+        y=plot_df["label"],
+        orientation="h",
+        marker_color=colors,
+        text=plot_df["frecuencia"],
+        textposition="outside",
+    ))
+    fig.update_layout(
+        title="Variantes detectadas (verde = sugerido como canónico)",
+        xaxis_title="Frecuencia",
+        yaxis_title="",
+        yaxis={"categoryorder": "total ascending"},
+        showlegend=False,
+    )
+    return fig

@@ -72,6 +72,7 @@ from src.charts import (
     create_correlation_heatmap,
     create_elbow_chart,
     create_forecast_chart,
+    create_fuzzy_groups_chart,
     create_null_heatmap,
     create_pareto_chart,
     create_rfm_scatter,
@@ -83,6 +84,9 @@ from src.charts import (
 )
 from src.clustering import auto_cluster
 from src.data_loader import get_excel_sheets, load_data, load_google_sheet
+from src.fuzzy_match import (find_similar_categories,
+                             apply_consolidation,
+                             build_mapping_from_groups)
 from src.rfm import calculate_rfm, rfm_summary
 from src.data_profiler import calculate_quality_score, profile_dataset, quality_warnings, warnings_to_frame
 from src.export_utils import export_excel, export_pdf, export_pptx
@@ -577,6 +581,7 @@ def main() -> None:
         advanced_tab,
         clustering_tab,
         rfm_tab,
+        cleanup_tab,
         insights_tab,
         recommendations_tab,
         downloads_tab,
@@ -592,6 +597,7 @@ def main() -> None:
             "Análisis avanzado",
             "Clustering",
             "RFM",
+            "Categorías",
             "Insights automáticos",
             "Recomendaciones",
             "Descargas",
@@ -1097,6 +1103,113 @@ comparado contra el resto de los clientes):
 | 💤 Perdidos | R≤2, F≤2, M≤2 | Hace mucho que no compran, bajo gasto |
 | 🔹 Regulares | Otra combinación | No encaja claramente en las anteriores |
     """)
+
+    with cleanup_tab:
+        st.subheader("Limpieza de categorías duplicadas")
+        st.caption(
+            "Detecta variantes de texto que probablemente representan "
+            "la misma categoría — mayúsculas, espacios extra, acentos "
+            "faltantes o errores de tipeo — y sugiere unificarlas."
+        )
+        if not analysis_ready:
+            st.info("Ejecuta el análisis para usar esta herramienta.")
+        else:
+            text_cols = [
+                c for c in df.columns
+                if not pd.api.types.is_numeric_dtype(df[c])
+                and not pd.api.types.is_datetime64_any_dtype(df[c])
+            ]
+            if not text_cols:
+                text_cols = df.columns.tolist()
+            if not text_cols:
+                st.info("No se encontraron columnas de texto para analizar.")
+            else:
+                cc1, cc2 = st.columns(2)
+                cleanup_col = cc1.selectbox(
+                    "Columna a revisar", text_cols,
+                    index=text_cols.index(category_col)
+                    if category_col in text_cols else 0,
+                    key="cleanup_col")
+                threshold = cc2.slider(
+                    "Sensibilidad de similitud", 0.70, 1.00, 0.85,
+                    step=0.01, key="cleanup_threshold",
+                    help="Más alto = más estricto, solo detecta "
+                         "variantes muy parecidas entre sí")
+
+                if st.button("Detectar duplicados", key="btn_detect_fuzzy"):
+                    groups = find_similar_categories(
+                        df[cleanup_col], threshold=threshold)
+                    st.session_state["fuzzy_groups"] = groups
+                    st.session_state["fuzzy_col"] = cleanup_col
+
+                groups = st.session_state.get("fuzzy_groups")
+                stored_col = st.session_state.get("fuzzy_col")
+
+                if groups is not None and stored_col == cleanup_col:
+                    if groups.empty:
+                        st.success(
+                            "No se detectaron categorías duplicadas con "
+                            "este nivel de sensibilidad.")
+                    else:
+                        n_groups = groups["grupo"].nunique()
+                        n_variants = len(groups)
+                        before_unique = df[cleanup_col].nunique()
+                        st.warning(
+                            f"Se detectaron **{n_groups} grupos** de "
+                            f"categorías similares ({n_variants} "
+                            f"variantes de {before_unique} valores "
+                            "únicos totales).")
+
+                        st.plotly_chart(
+                            create_fuzzy_groups_chart(groups),
+                            width="stretch", key="fuzzy_chart")
+
+                        with st.expander(
+                            "Ver tabla de grupos detectados",
+                            expanded=True):
+                            st.dataframe(groups, width="stretch",
+                                        hide_index=True)
+
+                        if st.button("Aplicar consolidación",
+                                     key="btn_apply_fuzzy"):
+                            mapping = build_mapping_from_groups(groups)
+                            cleaned_df = apply_consolidation(
+                                df, cleanup_col, mapping)
+                            after_unique = cleaned_df[cleanup_col].nunique()
+                            st.session_state["cleaned_df"] = cleaned_df
+                            st.success(
+                                f"Consolidación aplicada: de "
+                                f"**{before_unique}** a **{after_unique}** "
+                                "valores únicos.")
+
+                        cleaned_df = st.session_state.get("cleaned_df")
+                        if cleaned_df is not None:
+                            st.divider()
+                            st.subheader(
+                                "Comparación antes vs después")
+                            comp_a, comp_b = st.columns(2)
+                            with comp_a:
+                                st.caption("Antes (top 10)")
+                                st.dataframe(
+                                    df[cleanup_col].value_counts()
+                                    .head(10).rename("frecuencia"),
+                                    width="stretch")
+                            with comp_b:
+                                st.caption("Después (top 10)")
+                                st.dataframe(
+                                    cleaned_df[cleanup_col].value_counts()
+                                    .head(10).rename("frecuencia"),
+                                    width="stretch")
+
+                            csv_bytes = cleaned_df.to_csv(
+                                index=False).encode("utf-8-sig")
+                            st.download_button(
+                                "Descargar dataset con categorías "
+                                "unificadas",
+                                csv_bytes,
+                                file_name="dataset_categorias_limpias.csv",
+                                mime="text/csv",
+                                key="download_cleaned")
 
     with insights_tab:
         st.subheader("Insights automáticos")
