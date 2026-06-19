@@ -74,6 +74,8 @@ from src.charts import (
     create_forecast_chart,
     create_null_heatmap,
     create_pareto_chart,
+    create_rfm_scatter,
+    create_rfm_segment_chart,
     create_status_chart,
     create_temporal_chart,
     create_treemap,
@@ -81,6 +83,7 @@ from src.charts import (
 )
 from src.clustering import auto_cluster
 from src.data_loader import get_excel_sheets, load_data, load_google_sheet
+from src.rfm import calculate_rfm, rfm_summary
 from src.data_profiler import calculate_quality_score, profile_dataset, quality_warnings, warnings_to_frame
 from src.export_utils import export_excel, export_pdf, export_pptx
 from src.kpi_engine import (
@@ -573,6 +576,7 @@ def main() -> None:
         pareto_tab,
         advanced_tab,
         clustering_tab,
+        rfm_tab,
         insights_tab,
         recommendations_tab,
         downloads_tab,
@@ -587,6 +591,7 @@ def main() -> None:
             "Pareto / ABC",
             "Análisis avanzado",
             "Clustering",
+            "RFM",
             "Insights automáticos",
             "Recomendaciones",
             "Descargas",
@@ -1006,6 +1011,92 @@ def main() -> None:
                         st.dataframe(result["profiles"],
                                      width="stretch",
                                      hide_index=True)
+
+    with rfm_tab:
+        st.subheader("Segmentación RFM")
+        st.caption(
+            "Clasifica clientes según Recencia, Frecuencia y Monto. "
+            "Requiere un archivo con una fila por transacción y una "
+            "columna que identifique al cliente."
+        )
+        if not analysis_ready:
+            st.info("Ejecuta el análisis para usar RFM.")
+        else:
+            obj_cols = [c for c in df.columns if df[c].dtype == "object"]
+            date_cols_all = [c for c in df.columns]
+
+            rc1, rc2, rc3 = st.columns(3)
+            rfm_id_col = rc1.selectbox(
+                "Columna de cliente", df.columns.tolist(),
+                key="rfm_id")
+            rfm_date_col = rc2.selectbox(
+                "Columna de fecha", date_cols_all,
+                index=date_cols_all.index(date_col)
+                if date_col in date_cols_all else 0,
+                key="rfm_date")
+            rfm_amount_col = rc3.selectbox(
+                "Columna de monto", date_cols_all,
+                index=date_cols_all.index(amount_col)
+                if amount_col in date_cols_all else 0,
+                key="rfm_amount")
+
+            if st.button("Calcular RFM", key="btn_rfm"):
+                rfm_df = calculate_rfm(
+                    df, rfm_id_col, rfm_date_col, rfm_amount_col)
+                if rfm_df.empty:
+                    st.warning("No se pudo calcular RFM. Verifica que "
+                              "el archivo tenga múltiples transacciones "
+                              "por cliente.")
+                else:
+                    st.session_state["rfm_result"] = rfm_df
+
+            rfm_result = st.session_state.get("rfm_result")
+            if rfm_result is not None and not rfm_result.empty:
+                summary = rfm_summary(rfm_result)
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Clientes analizados", len(rfm_result))
+                m2.metric("Segmentos detectados",
+                          rfm_result["segmento"].nunique())
+                top_seg = summary.iloc[0]["segmento"] if not summary.empty else "—"
+                m3.metric("Segmento de mayor valor", top_seg)
+
+                st.plotly_chart(
+                    create_rfm_segment_chart(summary),
+                    width="stretch", key="rfm_segment_chart")
+                st.plotly_chart(
+                    create_rfm_scatter(rfm_result),
+                    width="stretch", key="rfm_scatter")
+
+                with st.expander("Ver tabla completa de clientes",
+                                 expanded=False):
+                    st.dataframe(rfm_result, width="stretch",
+                                 hide_index=True)
+                with st.expander("Ver resumen por segmento",
+                                 expanded=False):
+                    st.dataframe(summary, width="stretch",
+                                 hide_index=True)
+                with st.expander("Ver criterios de clasificación", expanded=False):
+                    st.markdown("""
+**Cada cliente recibe 3 puntajes del 1 al 5** (por quintiles,
+comparado contra el resto de los clientes):
+
+| Puntaje | Qué mide |
+|---|---|
+| **R — Recencia** | Qué tan reciente fue su última compra. 5 = compró hace poco, 1 = hace mucho tiempo |
+| **F — Frecuencia** | Cuántas veces compró en total. 5 = compra muy seguido, 1 = casi nunca |
+| **M — Monto** | Cuánto ha gastado en total. 5 = alto gasto, 1 = bajo gasto |
+
+**La combinación de los 3 puntajes define el segmento:**
+
+| Segmento | Condición | Significado |
+|---|---|---|
+| 🏆 Champions | R≥4, F≥4, M≥4 | Compran seguido, recientemente y gastan mucho |
+| 💚 Clientes leales | R≥3, F≥3, M≥3 | Buen comportamiento general |
+| ⚠️ En riesgo | R≤2, F≥3, M≥3 | Antes compraban bien, hace tiempo no vuelven |
+| 🆕 Nuevos | R≥4, F≤2 | Compraron hace poco, pocas veces |
+| 💤 Perdidos | R≤2, F≤2, M≤2 | Hace mucho que no compran, bajo gasto |
+| 🔹 Regulares | Otra combinación | No encaja claramente en las anteriores |
+    """)
 
     with insights_tab:
         st.subheader("Insights automáticos")

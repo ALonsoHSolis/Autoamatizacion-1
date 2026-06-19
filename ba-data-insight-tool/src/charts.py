@@ -441,3 +441,49 @@ def create_cluster_profiles_chart(profiles: pd.DataFrame) -> go.Figure:
         legend_title="Variable",
     )
     return fig
+
+
+def create_rfm_scatter(rfm_df: pd.DataFrame) -> go.Figure:
+    """Scatter: Recency vs Frequency, sized by Monetary, colored by segment."""
+    fig = px.scatter(
+        rfm_df, x="recency_days", y="frequency",
+        size="monetary", color="segmento",
+        color_discrete_sequence=PALETTE,
+        hover_data=["cliente", "monetary"],
+        title="Mapa de clientes: Recencia vs Frecuencia",
+        labels={
+            "recency_days": "Días desde última compra",
+            "frequency": "Cantidad de compras",
+        },
+    )
+    fig.update_layout(legend_title="Segmento")
+    return fig
+
+
+def create_rfm_segment_chart(summary_df: pd.DataFrame) -> go.Figure:
+    """Bar chart: number of clients and monetary value per segment."""
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="Clientes",
+        x=summary_df["segmento"],
+        y=summary_df["clientes"],
+        marker_color=PALETTE[0],
+        yaxis="y",
+    ))
+    fig.add_trace(go.Scatter(
+        name="Monto total",
+        x=summary_df["segmento"],
+        y=summary_df["monetary_total"],
+        mode="lines+markers",
+        line=dict(color=PALETTE[3], width=2),
+        marker=dict(size=8),
+        yaxis="y2",
+    ))
+    fig.update_layout(
+        title="Clientes y valor por segmento",
+        yaxis=dict(title="Cantidad de clientes"),
+        yaxis2=dict(title="Monto total", overlaying="y", side="right"),
+        legend=dict(orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="right", x=1),
+    )
+    return fig
