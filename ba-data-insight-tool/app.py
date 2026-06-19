@@ -64,6 +64,7 @@ business_insights = load_business_insights_module()
 from src.anomaly_detection import detect_anomalies
 from src.charts import (
     create_amount_distribution,
+    create_batch_summary_chart,
     create_boxplot,
     create_budget_chart,
     create_category_chart,
@@ -82,6 +83,8 @@ from src.charts import (
     create_treemap,
     create_waterfall,
 )
+from src.batch_processor import (validate_compatible_schemas,
+                                 consolidate_files, batch_summary)
 from src.clustering import auto_cluster
 from src.data_loader import get_excel_sheets, load_data, load_google_sheet
 from src.fuzzy_match import (find_similar_categories,
@@ -204,12 +207,14 @@ def render_sidebar_base() -> dict:
         st.markdown("### Fuente de datos")
         data_source = st.radio(
             "Tipo de entrada",
-            ["Subir archivo", "Google Sheets URL"],
+            ["Subir archivo", "Google Sheets URL",
+             "Múltiples archivos (batch)"],
             key="data_source",
             horizontal=True,
         )
 
         gs_df = None
+        batch_df = None
         if data_source == "Google Sheets URL":
             gs_url = st.text_input(
                 "URL de Google Sheets",
@@ -225,6 +230,44 @@ def render_sidebar_base() -> dict:
                     gs_df = None
             uploaded = None
             sheet_name = None
+        elif data_source == "Múltiples archivos (batch)":
+            batch_files = st.sidebar.file_uploader(
+                "Sube varios archivos (misma estructura)",
+                type=["csv","xlsx","xls"],
+                accept_multiple_files=True,
+                key="batch_uploader",
+            )
+            df = None
+            uploaded = None
+            sheet_name = None
+            if batch_files:
+                try:
+                    loaded_dfs = []
+                    filenames = []
+                    for f in batch_files:
+                        loaded_dfs.append(load_data(f, f.name))
+                        filenames.append(f.name)
+
+                    validation = validate_compatible_schemas(
+                        loaded_dfs, filenames)
+                    summary = batch_summary(loaded_dfs, filenames)
+                    st.session_state["batch_validation"] = validation
+                    st.session_state["batch_summary"] = summary
+
+                    total_rows = sum(len(d) for d in loaded_dfs)
+                    st.sidebar.success(
+                        f"{len(batch_files)} archivos · "
+                        f"{total_rows} filas totales")
+
+                    if not validation["is_compatible"]:
+                        st.sidebar.warning(
+                            "⚠️ Estructuras muy distintas entre archivos. "
+                            "Revisa el detalle antes de continuar.")
+
+                    df = consolidate_files(loaded_dfs, filenames)
+                except Exception as e:
+                    st.sidebar.error(f"Error al procesar archivos: {e}")
+            batch_df = df
         else:
             uploaded = st.file_uploader("Sube tu archivo", type=["csv", "xlsx", "xls"], key="uploaded_data_file")
 
@@ -259,6 +302,7 @@ def render_sidebar_base() -> dict:
             "threshold": threshold,
             "gs_df": gs_df,
             "gs_url": st.session_state.get("gs_url"),
+            "batch_df": batch_df,
         }
 
 
@@ -349,10 +393,10 @@ def render_detected_columns(profile: dict) -> None:
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
 
-def render_preview(uploaded, df: pd.DataFrame, profile: dict) -> None:
+def render_preview(source_filename: str, df: pd.DataFrame, profile: dict) -> None:
     st.subheader("Archivo cargado")
     col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Nombre", uploaded.name if uploaded is not None else "Archivo")
+    col_a.metric("Nombre", source_filename)
     col_b.metric("Filas", profile["rows"])
     col_c.metric("Columnas", profile["columns"])
 
@@ -469,6 +513,7 @@ def main() -> None:
     threshold = initial_controls["threshold"]
     gs_df = initial_controls["gs_df"]
     gs_url = initial_controls["gs_url"]
+    batch_df = initial_controls["batch_df"]
 
     if gs_df is not None:
         signature = f"gsheet:{gs_url}"
@@ -478,6 +523,16 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
         df = gs_df
+    elif batch_df is not None:
+        batch_summary_df = st.session_state.get("batch_summary")
+        filenames = batch_summary_df["archivo"].tolist() if batch_summary_df is not None else []
+        signature = "batch:" + ",".join(filenames)
+        if st.session_state.get("active_file_signature") != signature:
+            st.session_state["active_file_signature"] = signature
+            st.session_state["analysis_has_run"] = False
+            for key in ["date_column", "amount_column", "category_column", "status_column"]:
+                st.session_state.pop(key, None)
+        df = batch_df
     elif uploaded is not None:
         signature = file_signature(uploaded)
         if st.session_state.get("active_file_signature") != signature:
@@ -500,9 +555,41 @@ def main() -> None:
         render_empty_state()
         return
 
+    data_source = st.session_state.get("data_source")
+    batch_files = st.session_state.get("batch_uploader")
+    source_filename = (
+        uploaded.name if uploaded is not None
+        else "Google Sheets" if data_source == "Google Sheets URL"
+        else (
+            "Batch: " + ", ".join(f.name for f in batch_files)
+            if data_source == "Múltiples archivos (batch)" and batch_files
+            else "archivo_desconocido"
+        )
+    )
+
     profile = cached_profile(df)
     detected = profile["detected"]
     st.success("Archivo cargado correctamente.")
+
+    if st.session_state.get("data_source") == "Múltiples archivos (batch)":
+        batch_validation = st.session_state.get("batch_validation")
+        batch_summary_df = st.session_state.get("batch_summary")
+        if batch_validation and batch_summary_df is not None:
+            with st.expander("Ver detalle de consolidación batch",
+                             expanded=not batch_validation["is_compatible"]):
+                st.plotly_chart(
+                    create_batch_summary_chart(batch_summary_df),
+                    width="stretch", key="batch_chart")
+                st.dataframe(batch_summary_df, width="stretch",
+                            hide_index=True)
+                st.caption(
+                    f"Columnas en común: "
+                    f"{', '.join(batch_validation['common_columns'])}")
+                if batch_validation["per_file_missing"]:
+                    st.warning("Columnas faltantes por archivo:")
+                    for fname, missing in batch_validation[
+                        "per_file_missing"].items():
+                        st.write(f"**{fname}**: {', '.join(missing)}")
 
     controls = render_sidebar_column_controls(df, detected)
     amount_col = clean_selection(controls["amount_col"])
@@ -609,7 +696,7 @@ def main() -> None:
         st.caption("Vista general para confirmar que el archivo se cargó como esperabas.")
         render_summary_metrics(profile, warnings_df)
         st.divider()
-        render_preview(uploaded, df, profile)
+        render_preview(source_filename, df, profile)
 
     with quality_tab:
         st.subheader("Revisión de calidad")
@@ -1236,7 +1323,7 @@ comparado contra el resto de los clientes):
                 "Resumen": pd.DataFrame(
                     [
                         {
-                            "archivo": uploaded.name,
+                            "archivo": source_filename,
                             "tipo_analisis": analysis_type,
                             "filas": profile["rows"],
                             "columnas": profile["columns"],

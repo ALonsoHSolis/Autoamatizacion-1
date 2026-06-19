@@ -525,3 +525,26 @@ def create_fuzzy_groups_chart(groups_df: pd.DataFrame) -> go.Figure:
         showlegend=False,
     )
     return fig
+
+
+def create_batch_summary_chart(summary_df: pd.DataFrame) -> go.Figure:
+    """Bar chart showing rows contributed by each file in a batch upload."""
+    if summary_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="Sin archivos para mostrar.")
+        return fig
+
+    fig = go.Figure(go.Bar(
+        x=summary_df["archivo"],
+        y=summary_df["filas"],
+        marker_color=PALETTE[0],
+        text=summary_df["filas"],
+        textposition="outside",
+    ))
+    fig.update_layout(
+        title="Filas aportadas por cada archivo",
+        xaxis_title="",
+        yaxis_title="Cantidad de filas",
+        showlegend=False,
+    )
+    return fig
