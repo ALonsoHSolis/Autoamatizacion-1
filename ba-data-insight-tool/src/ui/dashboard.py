@@ -46,17 +46,21 @@ def render_executive_dashboard(
     category_col: str | None = None,
 ) -> None:
     """Render the executive dashboard: KPI cards, quality, alert and charts."""
-    st.markdown(f"**Archivo actual:** {source_filename}")
+    st.subheader("📁 Archivo analizado")
+    st.markdown(f"**{source_filename}**")
     st.caption(f"{profile['rows']:,} filas · {profile['columns']} columnas")
     st.divider()
 
     if not kpis_df.empty:
+        st.subheader("📊 KPIs principales")
         kpi_rows = kpis_df.head(4).to_dict("records")
         cols = st.columns(len(kpi_rows))
         for col, row in zip(cols, kpi_rows):
             col.metric(str(row["kpi"]), str(row["valor"]))
-    st.divider()
+        st.divider()
 
+    st.subheader("⚠️ Alertas y prioridades")
+    st.caption("Lo más urgente a revisar antes de tomar decisiones con estos datos.")
     alert_col, priority_col = st.columns(2)
     with alert_col:
         if warnings:
@@ -100,6 +104,7 @@ def render_executive_dashboard(
 
     if df is not None and (date_col or category_col):
         st.divider()
+        st.subheader("📈 Tendencias")
         chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
         idx = 0
         if date_col:
@@ -185,18 +190,11 @@ def render_detected_columns(profile: dict) -> None:
 
 
 def render_preview(source_filename: str, df: pd.DataFrame, profile: dict) -> None:
-    st.subheader("Archivo cargado")
-    col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Nombre", source_filename)
-    col_b.metric("Filas", profile["rows"])
-    col_c.metric("Columnas", profile["columns"])
-
     if profile["columns"] > 40:
         st.warning("El archivo tiene muchas columnas. Revisa las columnas detectadas antes de ejecutar el análisis.")
     if profile["missing_percent"] >= 30:
         st.warning("Se detecta un porcentaje alto de datos faltantes.")
 
-    st.subheader("Primeras filas")
     st.caption(f"Se muestran las primeras {min(PREVIEW_ROWS, len(df))} filas para mantener la lectura simple.")
     st.dataframe(df.head(PREVIEW_ROWS), width="stretch")
 

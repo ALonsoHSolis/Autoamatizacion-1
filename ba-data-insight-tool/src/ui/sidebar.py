@@ -1,8 +1,9 @@
 """Sidebar rendering for BA Data Insight Tool.
 
-Handles: the 8-step wizard navigation, data source selection
+Handles: the 4-step wizard navigation, data source selection
 (file / Google Sheets / batch), analysis type, advanced settings,
-and column confirmation controls.
+and column confirmation controls. Calidad/Análisis/Insights/Exportar
+live as subtabs inside the "Resumen ejecutivo" step (see src/ui/tabs.py).
 """
 from __future__ import annotations
 
@@ -26,10 +27,6 @@ WIZARD_STEPS = [
     ("cargar", "Cargar datos"),
     ("columnas", "Confirmar columnas"),
     ("resumen", "Resumen ejecutivo"),
-    ("calidad", "Calidad de datos"),
-    ("analisis", "Análisis"),
-    ("insights", "Insights y recomendaciones"),
-    ("exportar", "Exportar"),
 ]
 
 DATA_SOURCE_OPTIONS = [
@@ -51,16 +48,16 @@ def clean_selection(value: str) -> str | None:
 
 
 def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
-    """Render the 8-step wizard navigation in the sidebar as a vertical
+    """Render the 4-step wizard navigation in the sidebar as a vertical
     list of buttons with status (done / current / pending / locked).
 
-    Returns the key of the active step (e.g. "resumen", "analisis").
+    Returns the key of the active step (e.g. "resumen").
     """
     st.sidebar.markdown("### Tu progreso")
 
     available_keys = ["inicio", "cargar"]
     if file_loaded:
-        available_keys += ["columnas", "resumen", "calidad", "analisis", "insights", "exportar"]
+        available_keys += ["columnas", "resumen"]
 
     current = st.session_state.get("wizard_step", "inicio")
     if current not in available_keys:
@@ -71,7 +68,7 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
     if file_loaded:
         completed_keys.add("columnas")
     if analysis_ready:
-        completed_keys |= {"resumen", "calidad", "analisis", "insights", "exportar"}
+        completed_keys.add("resumen")
 
     for key, label in WIZARD_STEPS:
         locked = key not in available_keys

@@ -8,10 +8,40 @@ def inject_custom_css() -> None:
     st.markdown("""
     <style>
     .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
+        gap: 8px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.25);
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 6px 6px 0 0;
+        padding: 10px 18px;
+        margin-right: 2px;
+        font-size: 15px;
+        font-weight: 500;
+        color: #5A6B7D;
+    }
+    .stTabs [data-baseweb="tab"] p {
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(46, 109, 164, 0.08);
+        color: #2E6DA4;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(46, 109, 164, 0.12);
+        color: #2E6DA4 !important;
+        font-weight: 700;
+    }
+    .stTabs [aria-selected="true"] p {
+        color: #2E6DA4 !important;
+        font-weight: 700;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: #2E6DA4;
+        height: 3px;
+    }
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 20px;
     }
     div[data-testid="stMetric"] {
         background-color: rgba(127, 127, 127, 0.06);

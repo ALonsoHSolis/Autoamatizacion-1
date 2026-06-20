@@ -1,10 +1,14 @@
-"""Integration tests for the 8-step wizard UI flow in app.py.
+"""Integration tests for the 4-step wizard UI flow in app.py.
 
 Uses Streamlit's AppTest to simulate real user interaction (button
 clicks) rather than injecting session_state directly, so these tests
 catch the same class of bug as the "columnas stays locked after
 upload" and "upload controls render in sidebar instead of main area"
 regressions found during manual testing.
+
+Calidad/Análisis/Insights/Exportar are NOT separate wizard steps —
+they live as subtabs inside the "Resumen ejecutivo" step's content
+(see src/ui/tabs.py::render_step_resumen).
 """
 from __future__ import annotations
 
@@ -45,6 +49,15 @@ class TestInicioStep:
         columnas_btn = next(b for b in at.sidebar.button if b.key == "wizard_btn_columnas")
         assert inicio_btn.disabled is False
         assert columnas_btn.disabled is True
+
+    def test_wizard_has_only_four_steps(self, at):
+        keys = {b.key for b in at.sidebar.button if b.key.startswith("wizard_btn_")}
+        assert keys == {
+            "wizard_btn_inicio",
+            "wizard_btn_cargar",
+            "wizard_btn_columnas",
+            "wizard_btn_resumen",
+        }
 
 
 class TestCargarStep:
@@ -104,30 +117,86 @@ class TestDemoDataFlow:
         assert "run_analysis_button" in main_button_keys
 
 
-class TestFullWizardFlow:
-    """Walks Inicio -> demo data -> columnas -> run analysis -> every
-    remaining step, asserting no step raises an exception."""
+class TestRunAnalysisAutoAdvance:
+    """Covers clicking 'Ejecutar análisis' on the columnas step: it should
+    set analysis_has_run and jump straight to 'resumen' in one click,
+    without the user needing to click the wizard nav manually."""
 
-    @pytest.fixture
-    def analyzed(self, at):
+    def test_run_analysis_sets_flag_and_advances(self, at):
         _click(at, "btn_cta_demo")
         assert at.session_state["wizard_step"] == "columnas"
         _click(at, "run_analysis_button")
-        return at
+        assert at.session_state["analysis_has_run"] is True
+        assert at.session_state["wizard_step"] == "resumen"
+        assert len(at.exception) == 0
 
-    def test_run_analysis_sets_flag(self, analyzed):
-        assert analyzed.session_state["analysis_has_run"] is True
-        assert len(analyzed.exception) == 0
 
-    @pytest.mark.parametrize(
-        "step_key",
-        ["resumen", "calidad", "analisis", "insights", "exportar"],
-    )
-    def test_step_renders_without_exceptions(self, analyzed, step_key):
-        _click(analyzed, f"wizard_btn_{step_key}", where=analyzed.sidebar.button)
-        assert len(analyzed.exception) == 0
+class TestResumenSubtabs:
+    """Calidad/Análisis/Insights/Exportar are subtabs inside the
+    'Resumen ejecutivo' wizard step, not separate wizard steps.
 
-    def test_context_card_shows_in_sidebar_for_result_steps(self, analyzed):
-        _click(analyzed, "wizard_btn_resumen", where=analyzed.sidebar.button)
-        sidebar_text = " ".join(m.value for m in analyzed.sidebar.markdown)
+    Each test seeds session_state directly with an already-analyzed demo
+    dataset and lands on "resumen" in a single AppTest.run() call. This
+    avoids routing through the "columnas" step's widgets (date_column,
+    etc.), which Streamlit's AppTest keeps stale references to once they
+    stop being rendered — a later .run() call on the same tree would raise
+    a spurious KeyError trying to resolve them.
+    """
+
+    def _seed_resumen(self):
+        from src.data_loader import load_data
+
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        demo = load_data("sample_data/ventas_mensuales.csv", "ventas_mensuales.csv")
+        test.session_state["demo_df"] = demo
+        test.session_state["df"] = demo
+        test.session_state["df_loaded"] = True
+        test.session_state["source_filename"] = "ventas_mensuales.csv (ejemplo)"
+        test.session_state["active_file_signature"] = "demo:ventas_mensuales"
+        test.session_state["analysis_has_run"] = True
+        test.session_state["wizard_step"] = "resumen"
+        test.run()
+        return test
+
+    def test_renders_without_exceptions(self):
+        test = self._seed_resumen()
+        assert len(test.exception) == 0
+        assert test.session_state["wizard_step"] == "resumen"
+
+    def test_all_five_subtabs_present(self):
+        test = self._seed_resumen()
+        labels = {t.label for t in test.tabs}
+        assert {
+            "Resumen",
+            "Calidad de datos",
+            "Análisis",
+            "Insights y recomendaciones",
+            "Exportar",
+        } <= labels
+
+    def test_analisis_subtab_nested_sub_subtabs_present(self):
+        """Verifies st.tabs nested inside st.tabs (Análisis has its own
+        6 sub-sections) still render correctly under the new structure."""
+        test = self._seed_resumen()
+        labels = {t.label for t in test.tabs}
+        assert {
+            "Básico",
+            "Categorías y Pareto",
+            "Tabla pivot",
+            "Segmentación",
+            "Limpieza",
+            "Avanzado",
+        } <= labels
+
+    def test_context_card_shows_in_sidebar(self):
+        test = self._seed_resumen()
+        sidebar_text = " ".join(m.value for m in test.sidebar.markdown)
         assert "Archivo actual" in sidebar_text
+
+    def test_no_separate_wizard_steps_for_calidad_analisis_insights_exportar(self):
+        test = self._seed_resumen()
+        sidebar_keys = {b.key for b in test.sidebar.button}
+        assert "wizard_btn_calidad" not in sidebar_keys
+        assert "wizard_btn_analisis" not in sidebar_keys
+        assert "wizard_btn_insights" not in sidebar_keys
+        assert "wizard_btn_exportar" not in sidebar_keys

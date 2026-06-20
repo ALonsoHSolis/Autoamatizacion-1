@@ -88,13 +88,7 @@ from src.ui.sidebar import (
     render_wizard_nav,
 )
 from src.ui.dashboard import render_column_detection_cards
-from src.ui.tabs import (
-    render_step_analisis,
-    render_step_calidad,
-    render_step_exportar,
-    render_step_insights,
-    render_step_resumen,
-)
+from src.ui.tabs import render_step_resumen
 
 
 APP_TITLE = "Herramienta de análisis de datos de BA"
@@ -278,7 +272,7 @@ def main() -> None:
         render_column_detection_cards(detected)
         st.divider()
 
-    if step in ("resumen", "calidad", "analisis", "insights", "exportar"):
+    if step == "resumen":
         render_sidebar_context_card(
             source_filename, profile, analysis_type,
             st.session_state.get("quality_score"),
@@ -298,6 +292,8 @@ def main() -> None:
 
     if controls["run_analysis"]:
         st.session_state["analysis_has_run"] = True
+        st.session_state["wizard_step"] = "resumen"
+        st.rerun()
 
     warnings = quality_warnings(df, detected)
     warnings_df = warnings_to_frame(warnings)
@@ -380,14 +376,6 @@ def main() -> None:
         st.success("Archivo listo. Pasa a **Confirmar columnas** en el panel de progreso para continuar.")
     elif step == "resumen":
         render_step_resumen(ctx)
-    elif step == "calidad":
-        render_step_calidad(ctx)
-    elif step == "analisis":
-        render_step_analisis(ctx)
-    elif step == "insights":
-        render_step_insights(ctx)
-    elif step == "exportar":
-        render_step_exportar(ctx)
 
 
 if __name__ == "__main__":

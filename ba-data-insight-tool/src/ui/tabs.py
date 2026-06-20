@@ -60,6 +60,9 @@ from src.ui.dashboard import (
 
 
 def render_step_resumen(ctx: dict) -> None:
+    st.header("Resumen ejecutivo")
+    st.divider()
+
     analysis_ready = ctx["analysis_ready"]
     if analysis_ready:
         render_executive_dashboard(
@@ -74,11 +77,28 @@ def render_step_resumen(ctx: dict) -> None:
             category_col=ctx["category_col"],
         )
 
-    st.subheader("Resumen del dataset")
-    st.caption("Vista general para confirmar que el archivo se cargó como esperabas.")
-    render_summary_metrics(ctx["profile"], ctx["warnings_df"])
-    st.divider()
-    render_preview(ctx["source_filename"], ctx["df"], ctx["profile"])
+    sub_tabs = st.tabs([
+        "Resumen",
+        "Calidad de datos",
+        "Análisis",
+        "Insights y recomendaciones",
+        "Exportar",
+    ])
+    with sub_tabs[0]:
+        st.subheader("🧮 Resumen del dataset")
+        st.caption("Conteos generales para confirmar que el archivo se cargó como esperabas.")
+        render_summary_metrics(ctx["profile"], ctx["warnings_df"])
+        st.divider()
+        st.subheader("👀 Vista previa de los datos")
+        render_preview(ctx["source_filename"], ctx["df"], ctx["profile"])
+    with sub_tabs[1]:
+        render_step_calidad(ctx)
+    with sub_tabs[2]:
+        render_step_analisis(ctx)
+    with sub_tabs[3]:
+        render_step_insights(ctx)
+    with sub_tabs[4]:
+        render_step_exportar(ctx)
 
 
 def render_step_calidad(ctx: dict) -> None:
