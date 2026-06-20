@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'python|streamlit' } | Select-Object Id, ProcessName, StartTime)",
-      "Skill(claude-api)",
-      "Skill(claude-api:*)"
-    ]
-  }
-}
