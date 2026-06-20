@@ -165,6 +165,65 @@ def file_signature(uploaded) -> str:
     return f"{uploaded.name}:{uploaded.size}" if uploaded is not None else ""
 
 
+def inject_custom_css() -> None:
+    st.markdown("""
+    <style>
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px 6px 0 0;
+    }
+    div[data-testid="stMetric"] {
+        background-color: rgba(127, 127, 127, 0.06);
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+
+    /* Header bar with navy background behind the title */
+    .main .block-container h1:first-of-type {
+        background: linear-gradient(90deg, #1E3A5F 0%, #2E6DA4 100%);
+        color: white !important;
+        padding: 20px 24px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+    }
+
+    /* Sidebar background slightly distinct from main area */
+    section[data-testid="stSidebar"] {
+        background-color: var(--secondary-background-color);
+        border-right: 1px solid rgba(128, 128, 128, 0.25);
+    }
+
+    /* Primary buttons in brand navy */
+    .stButton button[kind="primary"] {
+        background-color: #1E3A5F;
+        border-color: #1E3A5F;
+    }
+    .stButton button[kind="primary"]:hover {
+        background-color: #2E6DA4;
+        border-color: #2E6DA4;
+    }
+
+    /* Dividers more subtle */
+    hr {
+        border-color: rgba(128, 128, 128, 0.25) !important;
+    }
+
+    /* Radio buttons in sidebar navigation, more spacing */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+        padding: 4px 0;
+    }
+
+    /* Captions slightly larger and softer color for readability */
+    .stCaption, [data-testid="stCaptionContainer"] {
+        color: #5A6B7D !important;
+        font-size: 13px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
 def render_header() -> None:
     st.title(APP_TITLE)
     st.caption(APP_SUBTITLE)
@@ -396,7 +455,13 @@ def render_quality_overview(warnings_df: pd.DataFrame) -> None:
         st.info("Hay advertencias medias que conviene revisar antes de presentar resultados finales.")
     else:
         st.success("Solo se detectaron advertencias de baja severidad.")
-    st.dataframe(display, width="stretch", hide_index=True)
+    display_df = display.copy()
+    display_df["severity"] = display_df["severity"].map({
+        "Alta": "🔴 Alta",
+        "Media": "🟡 Media",
+        "Baja": "🟢 Baja",
+    })
+    st.dataframe(display_df, width="stretch", hide_index=True)
 
 
 def render_detected_columns(profile: dict) -> None:
@@ -519,6 +584,7 @@ def render_recommendations(insights: dict, default_recommendations: list[str]) -
 
 
 def main() -> None:
+    inject_custom_css()
     render_header()
 
     initial_controls = render_sidebar_base()
@@ -745,7 +811,7 @@ def main() -> None:
     if nav_selection == "Análisis numérico":
         st.subheader("KPIs y análisis numérico")
         if not analysis_ready:
-            st.info("Ejecuta el análisis desde el panel lateral para ver KPIs, tendencias y anomalías.")
+            st.info("Ejecuta el análisis para ver tus KPIs principales, cómo evolucionan en el tiempo y qué valores se salen de lo normal.")
         else:
             render_business_kpis(kpis_df)
             st.divider()
@@ -770,7 +836,7 @@ def main() -> None:
     if nav_selection == "Categorías y estados":
         st.subheader("Análisis por categorías y estados")
         if not analysis_ready:
-            st.info("Ejecuta el análisis para ver rankings, participación y distribución por estados.")
+            st.info("Ejecuta el análisis para ver qué categorías y estados concentran más volumen y cómo se reparte el total entre ellos.")
         else:
             if category_col:
                 st.subheader("Ranking por categoría")
@@ -793,7 +859,7 @@ def main() -> None:
             "Ideal para comparar categorías por período o estado."
         )
         if not analysis_ready:
-            st.info("Ejecuta el análisis para usar la tabla pivot.")
+            st.info("Ejecuta el análisis para cruzar tus datos como una tabla dinámica de Excel, sin fórmulas.")
         else:
             cat_cols = [c for c in df.columns if df[c].dtype == "object"]
             num_cols = [c for c in df.columns
@@ -915,7 +981,7 @@ def main() -> None:
             "el 15 % (B) y el 5 % (C) del valor. Útil para priorizar revisión y recursos."
         )
         if not analysis_ready:
-            st.info("Ejecuta el análisis desde el panel lateral para ver el Pareto.")
+            st.info("Sube y analiza tus datos para descubrir qué categorías concentran el 80% del valor.")
         elif not category_col:
             st.info("Selecciona una columna de categoría para ver el análisis de Pareto.")
         else:
@@ -939,7 +1005,7 @@ def main() -> None:
     if nav_selection == "Análisis avanzado":
         st.subheader("Análisis avanzado")
         if not analysis_ready:
-            st.info("Ejecuta el análisis desde el panel lateral para ver las visualizaciones avanzadas.")
+            st.info("Ejecuta el análisis para desbloquear correlaciones, proyecciones y gráficos de composición.")
         else:
             if date_col:
                 st.subheader("Comparación de períodos")
@@ -1055,7 +1121,7 @@ def main() -> None:
             "categoría — detecta patrones ocultos en los datos."
         )
         if not analysis_ready:
-            st.info("Ejecuta el análisis para usar el clustering.")
+            st.info("Ejecuta el análisis para descubrir grupos ocultos en tus datos, sin necesidad de definir categorías manualmente.")
         else:
             num_cols = [c for c in df.columns
                         if pd.api.types.is_numeric_dtype(df[c])]
@@ -1144,7 +1210,7 @@ def main() -> None:
             "columna que identifique al cliente."
         )
         if not analysis_ready:
-            st.info("Ejecuta el análisis para usar RFM.")
+            st.info("Ejecuta el análisis para clasificar a tus clientes según qué tan recientes, frecuentes y valiosos son.")
         else:
             obj_cols = [c for c in df.columns if df[c].dtype == "object"]
             date_cols_all = [c for c in df.columns]
@@ -1230,7 +1296,7 @@ comparado contra el resto de los clientes):
             "faltantes o errores de tipeo — y sugiere unificarlas."
         )
         if not analysis_ready:
-            st.info("Ejecuta el análisis para usar esta herramienta.")
+            st.info("Ejecuta el análisis para detectar y unificar categorías duplicadas por errores de tipeo o formato.")
         else:
             text_cols = [
                 c for c in df.columns
@@ -1285,7 +1351,12 @@ comparado contra el resto de los clientes):
                         with st.expander(
                             "Ver tabla de grupos detectados",
                             expanded=True):
-                            st.dataframe(groups, width="stretch",
+                            display_df = groups.copy()
+                            display_df["es_canonico"] = display_df["es_canonico"].map({
+                                True: "✅ Sugerido como canónico",
+                                False: "🔁 Variante a reemplazar",
+                            })
+                            st.dataframe(display_df, width="stretch",
                                         hide_index=True)
 
                         if st.button("Aplicar consolidación",
@@ -1332,7 +1403,7 @@ comparado contra el resto de los clientes):
     if nav_selection == "Insights automáticos":
         st.subheader("Insights automáticos")
         if not analysis_ready:
-            st.info("Ejecuta el análisis para generar conclusiones ejecutivas.")
+            st.info("Ejecuta el análisis para generar un resumen ejecutivo con hallazgos y conclusiones listas para compartir.")
         else:
             render_insights(insights, kpis_df, profile, anomalies)
             with st.expander("Ver texto completo de insights", expanded=False):
@@ -1340,7 +1411,7 @@ comparado contra el resto de los clientes):
 
     if nav_selection == "Recomendaciones":
         if not analysis_ready:
-            st.info("Ejecuta el análisis para ver recomendaciones iniciales.")
+            st.info("Ejecuta el análisis para recibir sugerencias concretas sobre qué revisar o priorizar a continuación.")
         else:
             default_recommendations = build_default_recommendations(profile, warnings_df, anomalies, amount_col, category_col, date_col)
             render_recommendations(insights, default_recommendations)
@@ -1348,7 +1419,7 @@ comparado contra el resto de los clientes):
     if nav_selection == "Descargas":
         st.subheader("Descargar resultados")
         if not analysis_ready:
-            st.info("Ejecuta el análisis para habilitar las descargas.")
+            st.info("Ejecuta el análisis para descargar tus resultados en Excel, PDF o PowerPoint, listos para compartir.")
         else:
             export_sheets = {
                 "Resumen": pd.DataFrame(
