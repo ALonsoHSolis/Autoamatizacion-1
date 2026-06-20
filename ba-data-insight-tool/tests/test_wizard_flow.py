@@ -85,9 +85,13 @@ class TestDemoDataFlow:
         col_btn = next(b for b in at.sidebar.button if b.key == "wizard_btn_columnas")
         assert col_btn.disabled is False
 
+    def test_demo_load_auto_advances_to_columnas(self, at):
+        _click(at, "btn_cta_demo")
+        assert at.session_state["wizard_step"] == "columnas"
+        assert len(at.exception) == 0
+
     def test_columnas_step_shows_detection_cards_and_controls(self, at):
         _click(at, "btn_cta_demo")
-        _click(at, "wizard_btn_columnas", where=at.sidebar.button)
         assert len(at.exception) == 0
 
         selectbox_keys = {s.key for s in at.selectbox}
@@ -107,7 +111,7 @@ class TestFullWizardFlow:
     @pytest.fixture
     def analyzed(self, at):
         _click(at, "btn_cta_demo")
-        _click(at, "wizard_btn_columnas", where=at.sidebar.button)
+        assert at.session_state["wizard_step"] == "columnas"
         _click(at, "run_analysis_button")
         return at
 

@@ -128,8 +128,6 @@ def main() -> None:
     # Peek at the wizard step before rendering the nav, so that a file
     # uploaded/selected in THIS render already unlocks "columnas" instead
     # of requiring an extra rerun.
-    pending_step = st.session_state.get("wizard_step", "inicio")
-
     demo_df = st.session_state.get("demo_df")
     has_new_source = (
         demo_df is not None
@@ -137,9 +135,7 @@ def main() -> None:
         or st.session_state.get("uploaded_data_file") is not None
         or st.session_state.get("batch_uploader")
     )
-    file_loaded = st.session_state.get("df_loaded", False) or (
-        pending_step == "cargar" and bool(has_new_source)
-    )
+    file_loaded = st.session_state.get("df_loaded", False) or bool(has_new_source)
     analysis_ready = st.session_state.get("analysis_has_run", False)
     step = render_wizard_nav(file_loaded, analysis_ready)
 
@@ -169,22 +165,15 @@ def main() -> None:
 
     new_source_filename = None
 
-    if step != "cargar":
-        # Past the loading step, reuse the already-loaded DataFrame so the
-        # source selector doesn't need to re-render (and re-clear) on every step.
-        df = st.session_state.get("df")
-        new_source_filename = st.session_state.get("source_filename")
-        if df is None:
-            st.session_state["df_loaded"] = False
-            render_empty_state(load_data)
-            return
-    elif gs_df is not None:
+    if gs_df is not None:
         signature = f"gsheet:{gs_url}"
         if st.session_state.get("active_file_signature") != signature:
             st.session_state["active_file_signature"] = signature
             st.session_state["analysis_has_run"] = False
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
+            st.session_state["wizard_step"] = "columnas"
+            st.rerun()
         df = gs_df
         new_source_filename = "Google Sheets"
     elif batch_df is not None:
@@ -196,11 +185,14 @@ def main() -> None:
             st.session_state["analysis_has_run"] = False
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
+            st.session_state["wizard_step"] = "columnas"
+            st.rerun()
         df = batch_df
         new_source_filename = "Batch: " + ", ".join(filenames)
     elif uploaded is not None:
         signature = file_signature(uploaded)
-        if st.session_state.get("active_file_signature") != signature:
+        is_new_file = st.session_state.get("active_file_signature") != signature
+        if is_new_file:
             st.session_state["active_file_signature"] = signature
             st.session_state["analysis_has_run"] = False
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
@@ -217,6 +209,12 @@ def main() -> None:
                 st.code(str(exc))
             return
         new_source_filename = uploaded.name
+        if is_new_file:
+            st.session_state["df_loaded"] = True
+            st.session_state["df"] = df
+            st.session_state["source_filename"] = new_source_filename
+            st.session_state["wizard_step"] = "columnas"
+            st.rerun()
     elif demo_df is not None:
         signature = "demo:ventas_mensuales"
         if st.session_state.get("active_file_signature") != signature:
@@ -224,8 +222,20 @@ def main() -> None:
             st.session_state["analysis_has_run"] = False
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
+            st.session_state["wizard_step"] = "columnas"
+            st.rerun()
         df = demo_df
         new_source_filename = "ventas_mensuales.csv (ejemplo)"
+    elif step != "cargar":
+        # Past the loading step with no fresh source pending: reuse the
+        # already-loaded DataFrame so the source selector doesn't need to
+        # re-render (and re-clear) on every step.
+        df = st.session_state.get("df")
+        new_source_filename = st.session_state.get("source_filename")
+        if df is None:
+            st.session_state["df_loaded"] = False
+            render_empty_state(load_data)
+            return
     else:
         st.session_state["df_loaded"] = False
         return

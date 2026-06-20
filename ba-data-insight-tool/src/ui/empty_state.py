@@ -46,7 +46,7 @@ def render_empty_state(load_data=None) -> None:
         if st.button("▶️ Probar con datos de ejemplo", width="stretch", key="btn_cta_demo"):
             if load_data is not None and SAMPLE_FILE.exists():
                 st.session_state["demo_df"] = load_data(str(SAMPLE_FILE), SAMPLE_FILE.name)
-                st.session_state["wizard_step"] = "cargar"
+                st.session_state["wizard_step"] = "columnas"
                 st.rerun()
             else:
                 st.error("No se encontró el archivo de ejemplo.")
