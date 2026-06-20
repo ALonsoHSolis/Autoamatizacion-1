@@ -122,6 +122,19 @@ ANALYSIS_TYPES = [
     "Análisis financiero simple",
 ]
 
+GROUPS = {
+    "📊 Resumen ejecutivo": ["Resumen"],
+    "🔍 Calidad de datos": ["Calidad de datos"],
+    "📈 Análisis": [
+        "Análisis numérico", "Categorías y estados", "Tabla pivot",
+        "Pareto / ABC", "Análisis avanzado", "Clustering", "RFM",
+        "Categorías",
+    ],
+    "💰 Comparaciones": ["vs Presupuesto"],
+    "💡 Insights": ["Insights automáticos", "Recomendaciones"],
+    "📥 Exportar": ["Descargas"],
+}
+
 
 @st.cache_data(show_spinner=False)
 def cached_load(file_bytes: bytes, filename: str, sheet_name: str | None) -> pd.DataFrame:
@@ -285,15 +298,17 @@ def render_sidebar_base() -> dict:
         st.divider()
         st.subheader("2. Configurar análisis")
         analysis_type = st.selectbox("Tipo de análisis", ANALYSIS_TYPES, key="analysis_type")
-        threshold = st.slider(
-            "Sensibilidad de anomalías",
-            min_value=1.0,
-            max_value=4.0,
-            value=2.0,
-            step=0.25,
-            key="anomaly_threshold",
-            help="Valores más bajos detectan más registros sospechosos.",
-        )
+
+        with st.sidebar.expander("⚙️ Configuración avanzada", expanded=False):
+            threshold = st.slider(
+                "Sensibilidad para detectar valores atípicos",
+                min_value=1.0,
+                max_value=4.0,
+                value=2.0,
+                step=0.25,
+                key="anomaly_threshold",
+                help="Valores más bajos detectan más registros sospechosos.",
+            )
 
         return {
             "uploaded": uploaded,
@@ -657,48 +672,64 @@ def main() -> None:
                 figures_for_pdf["Matriz de correlación"] = create_correlation_heatmap(df)
             st.session_state["figures_for_pdf"] = figures_for_pdf
 
-    (
-        summary_tab,
-        quality_tab,
-        numeric_tab,
-        category_tab,
-        pivot_tab,
-        budget_tab,
-        pareto_tab,
-        advanced_tab,
-        clustering_tab,
-        rfm_tab,
-        cleanup_tab,
-        insights_tab,
-        recommendations_tab,
-        downloads_tab,
-    ) = st.tabs(
-        [
-            "Resumen",
-            "Calidad de datos",
-            "Análisis numérico",
-            "Categorías y estados",
-            "Tabla pivot",
-            "vs Presupuesto",
-            "Pareto / ABC",
-            "Análisis avanzado",
-            "Clustering",
-            "RFM",
-            "Categorías",
-            "Insights automáticos",
-            "Recomendaciones",
-            "Descargas",
-        ]
-    )
+    st.sidebar.markdown("### 📋 Navegación")
+    nav_category = st.sidebar.selectbox(
+        "Categoría", list(GROUPS.keys()), key="nav_category")
+    nav_selection = st.sidebar.radio(
+        "Sección", GROUPS[nav_category], key="nav_section")
 
-    with summary_tab:
+    if nav_selection == "Resumen":
+        if analysis_ready:
+            st.markdown("#### 🎯 Qué revisar primero")
+
+            # Quality score card
+            qc1, qc2, qc3 = st.columns(3)
+            if quality_score:
+                score = quality_score.get("score", 0)
+                label = quality_score.get("label", "")
+                color = ("🟢" if score >= 80 else
+                         "🟡" if score >= 55 else "🔴")
+                qc1.metric("Calidad de datos", f"{score}/100",
+                           delta=f"{color} {label}")
+
+            # Top alert: highest severity warning
+            if warnings:
+                high_warnings = [w for w in warnings
+                                 if w.severity == "Alta"]
+                top_warning = (high_warnings[0] if high_warnings
+                               else warnings[0])
+                qc2.metric("Alerta principal", top_warning.issue,
+                           help=top_warning.detail)
+            else:
+                qc2.metric("Alerta principal", "Sin alertas")
+
+            # Auto recommendation based on quality score
+            if quality_score and quality_score.get("score", 100) < 70:
+                recommendation = (
+                    "Revisar y corregir datos antes de presentar "
+                    "resultados a stakeholders."
+                )
+            elif warnings and any(w.severity == "Alta" for w in warnings):
+                recommendation = (
+                    "Resolver advertencias de severidad alta primero."
+                )
+            else:
+                recommendation = (
+                    "Datos listos para análisis y presentación."
+                )
+            qc3.metric("Recomendación", "Ver detalle",
+                       help=recommendation)
+
+            st.caption(f"💬 {recommendation}")
+            st.divider()
+
         st.subheader("Resumen del dataset")
         st.caption("Vista general para confirmar que el archivo se cargó como esperabas.")
         render_summary_metrics(profile, warnings_df)
         st.divider()
         render_preview(source_filename, df, profile)
 
-    with quality_tab:
+    if nav_selection == "Calidad de datos":
         st.subheader("Revisión de calidad")
         st.caption("Antes de tomar decisiones, revisa nulos, duplicados, formatos inválidos y valores sospechosos.")
         st.metric(
@@ -711,7 +742,7 @@ def main() -> None:
         with st.expander("Mapa simple de datos faltantes", expanded=False):
             st.plotly_chart(create_null_heatmap(df), width="stretch", key="null_heatmap_chart")
 
-    with numeric_tab:
+    if nav_selection == "Análisis numérico":
         st.subheader("KPIs y análisis numérico")
         if not analysis_ready:
             st.info("Ejecuta el análisis desde el panel lateral para ver KPIs, tendencias y anomalías.")
@@ -736,7 +767,7 @@ def main() -> None:
                 st.warning(f"Se detectaron {len(anomalies)} registros sospechosos.")
                 st.dataframe(anomalies, width="stretch")
 
-    with category_tab:
+    if nav_selection == "Categorías y estados":
         st.subheader("Análisis por categorías y estados")
         if not analysis_ready:
             st.info("Ejecuta el análisis para ver rankings, participación y distribución por estados.")
@@ -755,7 +786,7 @@ def main() -> None:
             else:
                 st.info("Selecciona una columna de estado para ver distribución.")
 
-    with pivot_tab:
+    if nav_selection == "Tabla pivot":
         st.subheader("Tabla pivot dinámica")
         st.caption(
             "Cruza dos dimensiones y agrega un valor numérico. "
@@ -808,7 +839,7 @@ def main() -> None:
                 except Exception as e:
                     st.warning(f"No se pudo generar el pivot: {e}")
 
-    with budget_tab:
+    if nav_selection == "vs Presupuesto":
         st.subheader("Comparación Real vs Presupuesto")
         st.caption(
             "Sube un archivo de presupuesto con las mismas categorías "
@@ -877,7 +908,7 @@ def main() -> None:
             else:
                 st.info("Sube el archivo de presupuesto para comenzar.")
 
-    with pareto_tab:
+    if nav_selection == "Pareto / ABC":
         st.subheader("Análisis de Pareto / ABC")
         st.caption(
             "Identifica automáticamente qué categorías concentran el 80 % (segmento A), "
@@ -905,7 +936,7 @@ def main() -> None:
                 with st.expander("Ver tabla Pareto completa", expanded=False):
                     st.dataframe(pareto_df, width='stretch', hide_index=True)
 
-    with advanced_tab:
+    if nav_selection == "Análisis avanzado":
         st.subheader("Análisis avanzado")
         if not analysis_ready:
             st.info("Ejecuta el análisis desde el panel lateral para ver las visualizaciones avanzadas.")
@@ -1016,7 +1047,7 @@ def main() -> None:
                     key="treemap_chart",
                 )
 
-    with clustering_tab:
+    if nav_selection == "Clustering":
         st.subheader("Clustering automático de segmentos")
         st.caption(
             "Agrupa automáticamente los registros en segmentos "
@@ -1105,7 +1136,7 @@ def main() -> None:
                                      width="stretch",
                                      hide_index=True)
 
-    with rfm_tab:
+    if nav_selection == "RFM":
         st.subheader("Segmentación RFM")
         st.caption(
             "Clasifica clientes según Recencia, Frecuencia y Monto. "
@@ -1191,7 +1222,7 @@ comparado contra el resto de los clientes):
 | 🔹 Regulares | Otra combinación | No encaja claramente en las anteriores |
     """)
 
-    with cleanup_tab:
+    if nav_selection == "Categorías":
         st.subheader("Limpieza de categorías duplicadas")
         st.caption(
             "Detecta variantes de texto que probablemente representan "
@@ -1298,7 +1329,7 @@ comparado contra el resto de los clientes):
                                 mime="text/csv",
                                 key="download_cleaned")
 
-    with insights_tab:
+    if nav_selection == "Insights automáticos":
         st.subheader("Insights automáticos")
         if not analysis_ready:
             st.info("Ejecuta el análisis para generar conclusiones ejecutivas.")
@@ -1307,14 +1338,14 @@ comparado contra el resto de los clientes):
             with st.expander("Ver texto completo de insights", expanded=False):
                 st.text_area("Resumen generado", insights_text, height=360, key="executive_insights_text")
 
-    with recommendations_tab:
+    if nav_selection == "Recomendaciones":
         if not analysis_ready:
             st.info("Ejecuta el análisis para ver recomendaciones iniciales.")
         else:
             default_recommendations = build_default_recommendations(profile, warnings_df, anomalies, amount_col, category_col, date_col)
             render_recommendations(insights, default_recommendations)
 
-    with downloads_tab:
+    if nav_selection == "Descargas":
         st.subheader("Descargar resultados")
         if not analysis_ready:
             st.info("Ejecuta el análisis para habilitar las descargas.")
