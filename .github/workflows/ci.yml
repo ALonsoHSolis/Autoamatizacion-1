@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+defaults:
+  run:
+    working-directory: ba-data-insight-tool
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,5 +21,7 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Compile check
+        run: python -m compileall src app.py
       - name: Run tests
         run: pytest tests/ -v --tb=short

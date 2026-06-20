@@ -62,17 +62,7 @@ from src.ui.dashboard import (
 def render_step_resumen(ctx: dict) -> None:
     analysis_ready = ctx["analysis_ready"]
     if analysis_ready:
-        render_executive_dashboard(
-            ctx["quality_score"],
-            ctx["warnings"],
-            ctx["kpis_df"],
-            ctx["source_filename"],
-            ctx["profile"],
-            df=ctx["df"],
-            date_col=ctx["date_col"],
-            amount_col=ctx["amount_col"],
-            category_col=ctx["category_col"],
-        )
+        render_executive_dashboard(ctx["quality_score"], ctx["warnings"])
 
     st.subheader("Resumen del dataset")
     st.caption("Vista general para confirmar que el archivo se cargó como esperabas.")
@@ -632,11 +622,11 @@ def render_step_analisis(ctx: dict) -> None:
         return
 
     sub_tabs = st.tabs([
-        "Básico",
+        "Tendencias y números",
         "Categorías y Pareto",
         "Tabla pivot",
         "Segmentación",
-        "Limpieza",
+        "Calidad de categorías",
         "Avanzado",
     ])
     with sub_tabs[0]:

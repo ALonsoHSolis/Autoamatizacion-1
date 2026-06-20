@@ -79,15 +79,12 @@ from src.ui.styles import inject_custom_css
 from src.ui.header import render_header
 from src.ui.empty_state import render_empty_state
 from src.ui.sidebar import (
-    ANALYSIS_TYPES,
     clean_selection,
     render_sidebar_analysis_config,
     render_sidebar_column_controls,
-    render_sidebar_context_card,
     render_sidebar_source,
     render_wizard_nav,
 )
-from src.ui.dashboard import render_column_detection_cards
 from src.ui.tabs import (
     render_step_analisis,
     render_step_calidad,
@@ -125,40 +122,16 @@ def main() -> None:
     inject_custom_css()
     render_header(APP_TITLE, APP_SUBTITLE)
 
-    # Peek at the wizard step before rendering the nav, so that a file
-    # uploaded/selected in THIS render already unlocks "columnas" instead
-    # of requiring an extra rerun.
-    pending_step = st.session_state.get("wizard_step", "inicio")
-
-    demo_df = st.session_state.get("demo_df")
-    has_new_source = (
-        demo_df is not None
-        or st.session_state.get("gs_url")
-        or st.session_state.get("uploaded_data_file") is not None
-        or st.session_state.get("batch_uploader")
-    )
-    file_loaded = st.session_state.get("df_loaded", False) or (
-        pending_step == "cargar" and bool(has_new_source)
-    )
+    file_loaded = st.session_state.get("df_loaded", False)
     analysis_ready = st.session_state.get("analysis_has_run", False)
     step = render_wizard_nav(file_loaded, analysis_ready)
 
     if step == "inicio":
-        render_empty_state(load_data)
+        render_empty_state()
         return
 
-    if step == "cargar":
-        source_controls = render_sidebar_source(load_data)
-    else:
-        source_controls = {"uploaded": None, "sheet_name": None, "gs_df": None, "gs_url": None, "batch_df": None}
-    if step == "columnas":
-        config_controls = render_sidebar_analysis_config()
-    else:
-        config_controls = {
-            "analysis_type": st.session_state.get("analysis_type", ANALYSIS_TYPES[0]),
-            "threshold": st.session_state.get("anomaly_threshold", 2.0),
-        }
-
+    source_controls = render_sidebar_source(load_data)
+    config_controls = render_sidebar_analysis_config()
     uploaded = source_controls["uploaded"]
     sheet_name = source_controls["sheet_name"]
     gs_df = source_controls["gs_df"]
@@ -167,18 +140,7 @@ def main() -> None:
     analysis_type = config_controls["analysis_type"]
     threshold = config_controls["threshold"]
 
-    new_source_filename = None
-
-    if step != "cargar":
-        # Past the loading step, reuse the already-loaded DataFrame so the
-        # source selector doesn't need to re-render (and re-clear) on every step.
-        df = st.session_state.get("df")
-        new_source_filename = st.session_state.get("source_filename")
-        if df is None:
-            st.session_state["df_loaded"] = False
-            render_empty_state(load_data)
-            return
-    elif gs_df is not None:
+    if gs_df is not None:
         signature = f"gsheet:{gs_url}"
         if st.session_state.get("active_file_signature") != signature:
             st.session_state["active_file_signature"] = signature
@@ -186,7 +148,6 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
         df = gs_df
-        new_source_filename = "Google Sheets"
     elif batch_df is not None:
         batch_summary_df = st.session_state.get("batch_summary")
         filenames = batch_summary_df["archivo"].tolist() if batch_summary_df is not None else []
@@ -197,7 +158,6 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
         df = batch_df
-        new_source_filename = "Batch: " + ", ".join(filenames)
     elif uploaded is not None:
         signature = file_signature(uploaded)
         if st.session_state.get("active_file_signature") != signature:
@@ -216,71 +176,51 @@ def main() -> None:
             with st.expander("Ver detalle técnico"):
                 st.code(str(exc))
             return
-        new_source_filename = uploaded.name
-    elif demo_df is not None:
-        signature = "demo:ventas_mensuales"
-        if st.session_state.get("active_file_signature") != signature:
-            st.session_state["active_file_signature"] = signature
-            st.session_state["analysis_has_run"] = False
-            for key in ["date_column", "amount_column", "category_column", "status_column"]:
-                st.session_state.pop(key, None)
-        df = demo_df
-        new_source_filename = "ventas_mensuales.csv (ejemplo)"
     else:
         st.session_state["df_loaded"] = False
+        st.info("⬅️ Selecciona y carga un archivo en el panel lateral para continuar.")
         return
 
     st.session_state["df_loaded"] = True
     st.session_state["df"] = df
-    if new_source_filename is not None:
-        st.session_state["source_filename"] = new_source_filename
-    source_filename = st.session_state.get("source_filename", "archivo_desconocido")
+
+    data_source = st.session_state.get("data_source")
+    batch_files = st.session_state.get("batch_uploader")
+    source_filename = (
+        uploaded.name if uploaded is not None
+        else "Google Sheets" if data_source == "Google Sheets URL"
+        else (
+            "Batch: " + ", ".join(f.name for f in batch_files)
+            if data_source == "Múltiples archivos (batch)" and batch_files
+            else "archivo_desconocido"
+        )
+    )
 
     profile = cached_profile(df)
     detected = profile["detected"]
+    st.success("Archivo cargado correctamente.")
 
-    if step == "cargar":
-        st.success("Archivo cargado correctamente.")
+    if st.session_state.get("data_source") == "Múltiples archivos (batch)":
+        batch_validation = st.session_state.get("batch_validation")
+        batch_summary_df = st.session_state.get("batch_summary")
+        if batch_validation and batch_summary_df is not None:
+            with st.expander("Ver detalle de consolidación batch",
+                             expanded=not batch_validation["is_compatible"]):
+                st.plotly_chart(
+                    create_batch_summary_chart(batch_summary_df),
+                    width="stretch", key="batch_chart")
+                st.dataframe(batch_summary_df, width="stretch",
+                            hide_index=True)
+                st.caption(
+                    f"Columnas en común: "
+                    f"{', '.join(batch_validation['common_columns'])}")
+                if batch_validation["per_file_missing"]:
+                    st.warning("Columnas faltantes por archivo:")
+                    for fname, missing in batch_validation[
+                        "per_file_missing"].items():
+                        st.write(f"**{fname}**: {', '.join(missing)}")
 
-        if st.session_state.get("data_source") == "Múltiples archivos (batch)":
-            batch_validation = st.session_state.get("batch_validation")
-            batch_summary_df = st.session_state.get("batch_summary")
-            if batch_validation and batch_summary_df is not None:
-                with st.expander("Ver detalle de consolidación batch",
-                                 expanded=not batch_validation["is_compatible"]):
-                    st.plotly_chart(
-                        create_batch_summary_chart(batch_summary_df),
-                        width="stretch", key="batch_chart")
-                    st.dataframe(batch_summary_df, width="stretch",
-                                hide_index=True)
-                    st.caption(
-                        f"Columnas en común: "
-                        f"{', '.join(batch_validation['common_columns'])}")
-                    if batch_validation["per_file_missing"]:
-                        st.warning("Columnas faltantes por archivo:")
-                        for fname, missing in batch_validation[
-                            "per_file_missing"].items():
-                            st.write(f"**{fname}**: {', '.join(missing)}")
-
-    if step == "columnas":
-        st.subheader("Confirmar columnas clave")
-        st.caption("Revisa las columnas detectadas y ajústalas si es necesario.")
-        render_column_detection_cards(detected)
-        st.divider()
-
-    if step in ("resumen", "calidad", "analisis", "insights", "exportar"):
-        render_sidebar_context_card(
-            source_filename, profile, analysis_type,
-            st.session_state.get("quality_score"),
-        )
-
-    controls = render_sidebar_column_controls(df, detected) if step == "columnas" else {
-        "amount_col": st.session_state.get("amount_column", "Ninguna"),
-        "date_col": st.session_state.get("date_column", "Ninguna"),
-        "category_col": st.session_state.get("category_column", "Ninguna"),
-        "status_col": st.session_state.get("status_column", "Ninguna"),
-        "run_analysis": False,
-    }
+    controls = render_sidebar_column_controls(df, detected)
     amount_col = clean_selection(controls["amount_col"])
     date_col = clean_selection(controls["date_col"])
     category_col = clean_selection(controls["category_col"])
@@ -294,8 +234,8 @@ def main() -> None:
     quality_score = calculate_quality_score(profile, warnings)
     st.session_state["quality_score"] = quality_score
 
-    if not st.session_state.get("analysis_has_run", False) and step == "columnas":
-        st.info("Previsualiza los datos y revisa la calidad. Luego confirma las columnas y presiona **Ejecutar análisis**.")
+    if not st.session_state.get("analysis_has_run", False):
+        st.info("Previsualiza los datos y revisa la calidad. Luego confirma las columnas en el panel lateral y presiona **Ejecutar análisis**.")
 
     analysis_ready = st.session_state.get("analysis_has_run", False)
     kpis: list[dict] = []
@@ -367,7 +307,9 @@ def main() -> None:
     }
 
     if step == "cargar":
-        st.success("Archivo listo. Pasa a **Confirmar columnas** en el panel de progreso para continuar.")
+        st.success("Archivo listo. Pasa a **3. Confirmar columnas** en el panel lateral para continuar.")
+    elif step == "columnas":
+        st.info("Confirma las columnas en el panel lateral y presiona **Ejecutar análisis**.")
     elif step == "resumen":
         render_step_resumen(ctx)
     elif step == "calidad":

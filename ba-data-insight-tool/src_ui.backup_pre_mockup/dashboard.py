@@ -12,108 +12,39 @@ import streamlit as st
 PREVIEW_ROWS = 20
 
 
-def render_column_detection_cards(detected: dict) -> None:
-    """Show detected date/amount/category/status columns as cards."""
-    labels = [
-        ("date", "Fecha detectada"),
-        ("amount", "Monto detectado"),
-        ("category", "Categoría detectada"),
-        ("status", "Estado detectado"),
-    ]
-    cols = st.columns(4)
-    for col, (key, title) in zip(cols, labels):
-        values = detected.get(key, [])
-        value_text = ", ".join(values) if values else "No detectada"
-        with col:
-            st.markdown(
-                f'<div class="card detect-card">'
-                f'<div class="detect-title">{title}</div>'
-                f'<div class="detect-value">{value_text}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+def render_executive_dashboard(quality_score: dict, warnings: list) -> None:
+    """Render the 'Qué revisar primero' executive snapshot."""
+    st.markdown("#### 🎯 Qué revisar primero")
 
+    qc1, qc2, qc3 = st.columns(3)
+    if quality_score:
+        score = quality_score.get("score", 0)
+        label = quality_score.get("label", "")
+        color = ("🟢" if score >= 80 else
+                 "🟡" if score >= 55 else "🔴")
+        qc1.metric("Calidad de datos", f"{score}/100",
+                   delta=f"{color} {label}")
 
-def render_executive_dashboard(
-    quality_score: dict,
-    warnings: list,
-    kpis_df: pd.DataFrame,
-    source_filename: str,
-    profile: dict,
-    df: pd.DataFrame | None = None,
-    date_col: str | None = None,
-    amount_col: str | None = None,
-    category_col: str | None = None,
-) -> None:
-    """Render the executive dashboard: KPI cards, quality, alert and charts."""
-    st.markdown(f"**Archivo actual:** {source_filename}")
-    st.caption(f"{profile['rows']:,} filas · {profile['columns']} columnas")
-    st.divider()
+    if warnings:
+        high_warnings = [w for w in warnings if w.severity == "Alta"]
+        top_warning = (high_warnings[0] if high_warnings else warnings[0])
+        qc2.metric("Alerta principal", top_warning.issue,
+                   help=top_warning.detail)
+    else:
+        qc2.metric("Alerta principal", "Sin alertas")
 
-    if not kpis_df.empty:
-        kpi_rows = kpis_df.head(4).to_dict("records")
-        cols = st.columns(len(kpi_rows))
-        for col, row in zip(cols, kpi_rows):
-            col.metric(str(row["kpi"]), str(row["valor"]))
-    st.divider()
-
-    alert_col, priority_col = st.columns(2)
-    with alert_col:
-        if warnings:
-            high_warnings = [w for w in warnings if w.severity == "Alta"]
-            top_warning = (high_warnings[0] if high_warnings else warnings[0])
-            badge_class = "badge-high" if top_warning.severity == "Alta" else "badge-medium" if top_warning.severity == "Media" else "badge-low"
-            st.markdown(
-                f'<div class="card alert-card">'
-                f'<div class="card-header"><span class="badge {badge_class}">{top_warning.severity} prioridad</span></div>'
-                f'<div class="card-title">{top_warning.issue}</div>'
-                f'<div class="card-desc">{top_warning.detail}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                '<div class="card alert-card"><div class="card-title">Sin alertas</div>'
-                '<div class="card-desc">No se detectaron advertencias relevantes.</div></div>',
-                unsafe_allow_html=True,
-            )
-
-    with priority_col:
-        if quality_score and quality_score.get("score", 100) < 70:
-            action = "Revisar y corregir datos antes de presentar resultados a stakeholders."
-            badge_class = "badge-high"
-        elif warnings and any(w.severity == "Alta" for w in warnings):
-            action = "Resolver advertencias de severidad alta primero."
-            badge_class = "badge-high"
-        else:
-            action = "Datos listos para análisis y presentación."
-            badge_class = "badge-low"
-        score = quality_score.get("score", 0) if quality_score else 0
-        st.markdown(
-            f'<div class="card alert-card">'
-            f'<div class="card-header"><span class="badge {badge_class}">Qué revisar primero</span></div>'
-            f'<div class="card-title">Calidad de datos: {score}/100</div>'
-            f'<div class="card-desc">{action}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
+    if quality_score and quality_score.get("score", 100) < 70:
+        recommendation = (
+            "Revisar y corregir datos antes de presentar "
+            "resultados a stakeholders."
         )
+    elif warnings and any(w.severity == "Alta" for w in warnings):
+        recommendation = "Resolver advertencias de severidad alta primero."
+    else:
+        recommendation = "Datos listos para análisis y presentación."
+    qc3.metric("Recomendación", "Ver detalle", help=recommendation)
 
-    if df is not None and (date_col or category_col):
-        st.divider()
-        chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
-        idx = 0
-        if date_col:
-            from src.charts import create_temporal_chart
-            with chart_cols[idx]:
-                st.caption("Tendencia temporal")
-                st.plotly_chart(create_temporal_chart(df, date_col, amount_col), width="stretch", key="exec_dashboard_temporal")
-            idx += 1
-        if category_col:
-            from src.charts import create_category_chart
-            with chart_cols[idx]:
-                st.caption("Distribución por categoría")
-                st.plotly_chart(create_category_chart(df, category_col, amount_col), width="stretch", key="exec_dashboard_category")
-
+    st.caption(f"💬 {recommendation}")
     st.divider()
 
 
