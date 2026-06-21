@@ -64,8 +64,9 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
         current = available_keys[-1] if file_loaded else "cargar"
         st.session_state["wizard_step"] = current
 
-    completed_keys = {"inicio", "cargar"}
+    completed_keys = {"inicio"}
     if file_loaded:
+        completed_keys.add("cargar")
         completed_keys.add("columnas")
     if analysis_ready:
         completed_keys.add("resumen")
@@ -117,7 +118,17 @@ def render_sidebar_context_card(source_filename: str, profile: dict, analysis_ty
         st.sidebar.caption(f"Calidad de datos: {quality_score['score']}/100")
 
     with st.sidebar.expander("Cambiar archivo / Reiniciar"):
-        if st.button("Limpiar / reiniciar", width="stretch", key="reset_button_context"):
+        render_reset_control(key_prefix="context")
+
+
+def render_reset_control(container=None, key_prefix: str = "") -> None:
+    """Render a 'Limpiar / reiniciar' button gated behind a confirmation
+    popover, since session_state.clear() discards the loaded file and
+    analysis irreversibly."""
+    target = container if container is not None else st
+    with target.popover("Limpiar / reiniciar", width="stretch"):
+        st.warning("Se perderá el archivo cargado y el análisis actual. Esta acción no se puede deshacer.")
+        if st.button("Sí, reiniciar todo", type="primary", width="stretch", key=f"confirm_reset_{key_prefix}"):
             st.session_state.clear()
             st.rerun()
 
@@ -167,7 +178,15 @@ def render_sidebar_source(load_data, container=None) -> dict:
                     gs_df = load_google_sheet(gs_url)
                     target.success(f"Cargado: {len(gs_df)} filas · {len(gs_df.columns)} columnas")
                 except ValueError as exc:
-                    target.error(str(exc))
+                    target.error("No pudimos cargar la hoja de Google Sheets.")
+                    target.markdown(
+                        "Revisa lo siguiente:\n"
+                        "- El documento debe estar compartido como **\"Cualquier persona con el enlace\"**.\n"
+                        "- La URL debe apuntar a un Google Sheet (no a Drive ni a otro tipo de archivo).\n"
+                        "- La primera hoja debe tener encabezados de columna en la primera fila."
+                    )
+                    with target.expander("Ver detalle técnico"):
+                        target.code(str(exc))
                     gs_df = None
             uploaded = None
             sheet_name = None
@@ -205,7 +224,15 @@ def render_sidebar_source(load_data, container=None) -> dict:
 
                     df = consolidate_files(loaded_dfs, filenames)
                 except Exception as e:
-                    target.error(f"Error al procesar archivos: {e}")
+                    target.error("No pudimos consolidar los archivos.")
+                    target.markdown(
+                        "Revisa lo siguiente:\n"
+                        "- Todos los archivos deben tener encabezados de columna en la primera fila.\n"
+                        "- Deben compartir al menos algunas columnas en común para poder unirse.\n"
+                        "- Ningún archivo debe estar vacío o dañado."
+                    )
+                    with target.expander("Ver detalle técnico"):
+                        target.code(str(e))
             batch_df = df
         else:
             uploaded = target.file_uploader("Sube tu archivo", type=["csv", "xlsx", "xls"], key="uploaded_data_file")
@@ -272,9 +299,8 @@ def render_sidebar_column_controls(df: pd.DataFrame, detected: dict, container=N
         target.divider()
         btn_col_a, btn_col_b = target.columns(2)
         run_analysis = btn_col_a.button("Ejecutar análisis", type="primary", width="stretch", key="run_analysis_button")
-        if btn_col_b.button("Limpiar / reiniciar", width="stretch", key="reset_button"):
-            st.session_state.clear()
-            st.rerun()
+        with btn_col_b:
+            render_reset_control(key_prefix="columnas")
 
     return {
         "date_col": date_col,

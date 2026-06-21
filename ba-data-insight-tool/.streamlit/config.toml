@@ -1,0 +1,8 @@
+[client]
+# Hide Streamlit's native "Deploy" button and the hamburger menu (Settings,
+# Print, Record screencast, "Made with Streamlit", etc.) so the toolbar
+# doesn't distract from the app's own branding in front of clients.
+toolbarMode = "minimal"
+
+[theme]
+base = "dark"

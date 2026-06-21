@@ -110,6 +110,23 @@ def inject_custom_css() -> None:
         box-shadow: var(--shadow-blue);
     }
 
+    /* "Probar con datos de ejemplo" is a tertiary/exploratory action next to
+       the primary "Cargar archivo" CTA - rendered as a quiet ghost button so
+       it doesn't compete visually with the real primary action. */
+    .st-key-btn_cta_demo .stButton button {
+        background-color: transparent;
+        border-color: transparent;
+        color: var(--text-secondary);
+        box-shadow: none;
+    }
+    .st-key-btn_cta_demo .stButton button:hover:not(:disabled) {
+        background-color: rgba(148, 163, 184, 0.08);
+        border-color: var(--border-soft);
+        color: var(--text-main);
+        transform: none;
+        box-shadow: none;
+    }
+
     /* Secondary buttons (wizard steps, source selector) get a brand-tinted hover */
     .stButton button[kind="secondary"]:hover:not(:disabled) {
         background-color: rgba(37, 99, 235, 0.12);
@@ -364,7 +381,7 @@ def inject_custom_css() -> None:
     .hero-card {
         background: linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(56, 189, 248, 0.10) 50%, rgba(124, 58, 237, 0.16) 100%);
         border: 1px solid var(--border-blue);
-        padding: 30px 26px;
+        padding: 16px 22px;
         text-align: left;
     }
     .hero-card:hover {
@@ -373,8 +390,8 @@ def inject_custom_css() -> None:
         background: linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(56, 189, 248, 0.10) 50%, rgba(124, 58, 237, 0.16) 100%);
     }
     .hero-card h2 {
-        margin: 0 0 8px 0;
-        font-size: 30px;
+        margin: 0 0 4px 0;
+        font-size: 20px;
         line-height: 1.25;
         color: var(--text-main);
     }
@@ -385,7 +402,7 @@ def inject_custom_css() -> None:
         color: transparent;
     }
     .hero-card .hero-subtitle {
-        font-size: 15px;
+        font-size: 14px;
         color: var(--text-secondary);
         margin: 0;
     }

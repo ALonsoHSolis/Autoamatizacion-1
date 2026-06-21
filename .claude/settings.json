@@ -4,7 +4,13 @@
       "Bash(curl -s http://localhost:8765)",
       "Bash(pkill -f \"streamlit run app.py\")",
       "Bash(pkill -f \"server.port 8765\")",
-      "Bash(pkill -f \"server.port 8782\")"
+      "Bash(pkill -f \"server.port 8782\")",
+      "Bash(git rm *)",
+      "Bash(python -m compileall -q src app.py)",
+      "Bash(python -m pytest -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python -m streamlit --version)"
     ]
   }
 }

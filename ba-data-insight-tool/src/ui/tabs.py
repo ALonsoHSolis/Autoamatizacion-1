@@ -702,6 +702,21 @@ def render_step_exportar(ctx: dict) -> None:
     APP_TITLE = ctx["app_title"]
 
     st.subheader("Descargar resultados")
+
+    pdf_figures = st.session_state.get("figures_for_pdf", {}).copy()
+    saved_forecast = st.session_state.get("forecast")
+    if saved_forecast:
+        pdf_figures["Tendencia temporal"] = create_forecast_chart(saved_forecast)
+
+    n_graphs = len(pdf_figures)
+    n_kpis = len(kpis_df)
+    n_insights = len(insights.get("hallazgos", []) or [])
+    n_warnings = len(warnings_df)
+    st.caption(
+        f"Se incluirán: {n_kpis} KPIs · {n_graphs} gráficos · "
+        f"{n_insights} insights · {n_warnings} alertas de calidad."
+    )
+
     export_sheets = {
         "Resumen": pd.DataFrame(
             [
@@ -722,12 +737,9 @@ def render_step_exportar(ctx: dict) -> None:
         "Estados": status_summary(df, status_col, amount_col) if status_col else pd.DataFrame(),
         "Tendencia temporal": temporal_trend(df, date_col, amount_col) if date_col else pd.DataFrame(),
     }
-    excel_bytes = export_excel(export_sheets, insights_text)
-    pdf_figures = st.session_state.get("figures_for_pdf", {}).copy()
-    saved_forecast = st.session_state.get("forecast")
-    if saved_forecast:
-        pdf_figures["Tendencia temporal"] = create_forecast_chart(saved_forecast)
-    pdf_bytes = export_pdf(APP_TITLE, profile, kpis_df, insights, figures=pdf_figures)
+    with st.spinner("Preparando archivos para descargar..."):
+        excel_bytes = export_excel(export_sheets, insights_text)
+        pdf_bytes = export_pdf(APP_TITLE, profile, kpis_df, insights, figures=pdf_figures)
     col_a, col_b = st.columns(2)
     col_a.download_button(
         "Descargar Excel",

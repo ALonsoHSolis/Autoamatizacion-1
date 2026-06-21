@@ -199,7 +199,14 @@ def main() -> None:
                 file_bytes = uploaded.read()
                 df = cached_load(file_bytes, uploaded.name, sheet_name)
         except ValueError as exc:
-            st.error("No pudimos procesar el archivo. Revisa que tenga encabezados válidos y datos tabulares.")
+            st.error("No pudimos procesar el archivo.")
+            st.markdown(
+                "Revisa lo siguiente antes de volver a intentarlo:\n"
+                "- La primera fila debe tener los encabezados de columna (no datos).\n"
+                "- En CSV, el separador debe ser coma (`,`) o punto y coma (`;`).\n"
+                "- El archivo no debe estar vacío ni tener solo una columna sin datos.\n"
+                "- Si es Excel, confirma que elegiste la hoja correcta."
+            )
             with st.expander("Ver detalle técnico"):
                 st.code(str(exc))
             return

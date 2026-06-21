@@ -51,13 +51,19 @@ def render_executive_dashboard(
     st.caption(f"{profile['rows']:,} filas · {profile['columns']} columnas")
     st.divider()
 
+    st.subheader("📊 KPIs principales")
     if not kpis_df.empty:
-        st.subheader("📊 KPIs principales")
         kpi_rows = kpis_df.head(4).to_dict("records")
         cols = st.columns(len(kpi_rows))
         for col, row in zip(cols, kpi_rows):
             col.metric(str(row["kpi"]), str(row["valor"]))
-        st.divider()
+    else:
+        st.warning(
+            "No se calcularon KPIs con la configuración actual. "
+            "Revisa en **Confirmar columnas** que la columna de monto esté bien mapeada, "
+            "y que el archivo tenga datos en esa columna."
+        )
+    st.divider()
 
     st.subheader("⚠️ Alertas y prioridades")
     st.caption("Lo más urgente a revisar antes de tomar decisiones con estos datos.")
@@ -66,10 +72,13 @@ def render_executive_dashboard(
         if warnings:
             high_warnings = [w for w in warnings if w.severity == "Alta"]
             top_warning = (high_warnings[0] if high_warnings else warnings[0])
-            badge_class = "badge-high" if top_warning.severity == "Alta" else "badge-medium" if top_warning.severity == "Media" else "badge-low"
+            badge_class, badge_icon = {
+                "Alta": ("badge-high", "🔴"),
+                "Media": ("badge-medium", "🟡"),
+            }.get(top_warning.severity, ("badge-low", "🟢"))
             st.markdown(
                 f'<div class="card alert-card">'
-                f'<div class="card-header"><span class="badge {badge_class}">{top_warning.severity} prioridad</span></div>'
+                f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} {top_warning.severity} prioridad</span></div>'
                 f'<div class="card-title">{top_warning.issue}</div>'
                 f'<div class="card-desc">{top_warning.detail}</div>'
                 f'</div>',
@@ -85,17 +94,17 @@ def render_executive_dashboard(
     with priority_col:
         if quality_score and quality_score.get("score", 100) < 70:
             action = "Revisar y corregir datos antes de presentar resultados a stakeholders."
-            badge_class = "badge-high"
+            badge_class, badge_icon = "badge-high", "🔴"
         elif warnings and any(w.severity == "Alta" for w in warnings):
             action = "Resolver advertencias de severidad alta primero."
-            badge_class = "badge-high"
+            badge_class, badge_icon = "badge-high", "🔴"
         else:
             action = "Datos listos para análisis y presentación."
-            badge_class = "badge-low"
+            badge_class, badge_icon = "badge-low", "🟢"
         score = quality_score.get("score", 0) if quality_score else 0
         st.markdown(
             f'<div class="card alert-card">'
-            f'<div class="card-header"><span class="badge {badge_class}">Qué revisar primero</span></div>'
+            f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} Qué revisar primero</span></div>'
             f'<div class="card-title">Calidad de datos: {score}/100</div>'
             f'<div class="card-desc">{action}</div>'
             f'</div>',

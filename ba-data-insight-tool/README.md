@@ -7,6 +7,8 @@
 
 BA Data Insight Tool es una aplicación web en Streamlit para convertir archivos Excel o CSV en un análisis ejecutivo de negocio. Está pensada para equipos que reciben bases operativas, pagos, ventas, conciliaciones, registros de personas o datos financieros simples y necesitan entender rápidamente qué está pasando, dónde está el impacto y qué revisar antes de tomar decisiones.
 
+La interfaz guía al usuario en un **wizard de 4 pasos** (Inicio → Cargar datos → Confirmar columnas → Resumen ejecutivo) con avance automático entre pasos, sobre un dark mode premium con tarjetas glassmorphism. El Resumen ejecutivo agrupa Calidad de datos, Análisis, Insights y Exportar como subtabs, en vez de pasos separados.
+
 ## ✨ Funcionalidades principales
 
 | Módulo | Descripción |
@@ -116,12 +118,11 @@ La carpeta `sample_data/` incluye:
 Para probar:
 
 1. Ejecuta `streamlit run app.py`.
-2. Carga uno de los archivos demo.
-3. Revisa las columnas sugeridas.
-4. Elige el tipo de análisis correspondiente.
-5. Presiona `Ejecutar análisis`.
-6. Revisa KPIs, gráficos, calidad, anomalías e insights.
-7. Descarga Excel, PDF o PowerPoint.
+2. En el paso **Inicio**, usa "Probar con datos de ejemplo" o "Cargar archivo" para subir uno de los demo.
+3. La app avanza automáticamente a **Confirmar columnas**: revisa las columnas sugeridas y el tipo de análisis.
+4. Presiona `Ejecutar análisis` — avanza automáticamente a **Resumen ejecutivo**.
+5. Explora las subtabs: Resumen, Calidad de datos, Análisis, Insights y recomendaciones, Exportar.
+6. Descarga Excel, PDF o PowerPoint desde la subtab Exportar.
 
 ## IA opcional
 
@@ -130,7 +131,7 @@ La app funciona sin IA. Para activar insights asistidos:
 1. Crea un archivo `.env` o define una variable de entorno.
 2. Agrega `ANTHROPIC_API_KEY=tu_api_key`.
 3. Opcionalmente define `ANTHROPIC_MODEL=claude-sonnet-4-6`.
-4. Marca `Mejorar insights con IA` en la barra lateral.
+4. La app detecta la API key automáticamente y mejora los insights sin pasos adicionales.
 
 La app no envía el archivo completo a la IA. Solo envía un resumen agregado con KPIs, tendencias, anomalías, calidad y rankings.
 
@@ -167,12 +168,20 @@ ba-data-insight-tool/
 │   ├── data_profiler.py
 │   ├── export_utils.py
 │   ├── kpi_engine.py
-│   └── utils.py
+│   ├── utils.py
+│   └── ui/
+│       ├── styles.py        # CSS dark-mode/glassmorphism inyectado en la app
+│       ├── header.py        # Título dinámico por paso del wizard
+│       ├── empty_state.py   # Onboarding (paso "Inicio")
+│       ├── sidebar.py       # Wizard de 4 pasos, fuente de datos, columnas
+│       ├── dashboard.py     # KPIs, alertas, calidad, insights (bloques reutilizables)
+│       └── tabs.py          # Subtabs de "Resumen ejecutivo"
 ├── sample_data/
 │   ├── ventas_mensuales.csv
 │   ├── pagos_demo.csv
 │   └── registros_demo.xlsx
 └── tests/
+    ├── test_wizard_flow.py
     ├── test_anomaly_detection.py
     ├── test_data_profiler.py
     └── test_kpi_engine.py
