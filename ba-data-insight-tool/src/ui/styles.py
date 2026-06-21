@@ -48,6 +48,12 @@ def inject_custom_css() -> None:
         color: var(--text-main);
     }
 
+    /* Streamlit's default top padding is very tall; tighten it so page
+       titles sit close to the top instead of floating mid-screen. */
+    .main .block-container {
+        padding-top: 1.6rem;
+    }
+
     /* ============ Typography ============ */
     h1, h2, h3 {
         letter-spacing: -0.01em;
@@ -265,11 +271,21 @@ def inject_custom_css() -> None:
     .main .block-container h1:first-of-type {
         background: var(--gradient-brand);
         color: var(--text-main) !important;
-        padding: 22px 26px;
+        padding: 16px 24px;
         border-radius: 12px;
-        margin-bottom: 8px;
+        margin-top: 0;
+        margin-bottom: 6px;
         letter-spacing: -0.01em;
+        font-size: 1.7rem;
         box-shadow: var(--shadow-card);
+    }
+    /* The caption right under the header banner and the divider after it
+       don't need much breathing room before the page content starts. */
+    .main .block-container h1:first-of-type + div [data-testid="stCaptionContainer"] {
+        margin-bottom: 0;
+    }
+    .main .block-container h1:first-of-type ~ hr:first-of-type {
+        margin: 10px 0 18px 0;
     }
 
     /* ============ Sidebar ============ */
