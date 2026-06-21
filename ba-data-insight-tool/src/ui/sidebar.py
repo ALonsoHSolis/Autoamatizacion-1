@@ -93,6 +93,16 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
             st.session_state["wizard_step"] = key
             st.rerun()
 
+    if analysis_ready:
+        st.sidebar.markdown(
+            '<div class="progress-complete">'
+            '<div class="progress-ring">100%</div>'
+            '<div class="progress-title">Progreso completo</div>'
+            '<div class="progress-desc">Listo para generar insights</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
     st.sidebar.divider()
     return current
 
@@ -130,22 +140,19 @@ def render_sidebar_source(load_data, container=None) -> dict:
         target.caption("Formatos soportados: CSV, XLSX y XLS.")
 
         target.markdown("### Fuente de datos")
+        source_values = [value for value, _ in DATA_SOURCE_OPTIONS]
+        source_descriptions = dict(DATA_SOURCE_OPTIONS)
         if "data_source" not in st.session_state:
-            st.session_state["data_source"] = DATA_SOURCE_OPTIONS[0][0]
+            st.session_state["data_source"] = source_values[0]
 
-        source_cols = target.columns(len(DATA_SOURCE_OPTIONS))
-        for col, (value, description) in zip(source_cols, DATA_SOURCE_OPTIONS):
-            is_selected = st.session_state["data_source"] == value
-            if col.button(
-                value,
-                key=f"source_btn_{value}",
-                width="stretch",
-                type="primary" if is_selected else "secondary",
-            ):
-                st.session_state["data_source"] = value
-                st.rerun()
-            col.caption(description)
-        data_source = st.session_state["data_source"]
+        data_source = target.radio(
+            "Fuente de datos",
+            source_values,
+            key="data_source",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        target.caption(source_descriptions[data_source])
 
         gs_df = None
         batch_df = None

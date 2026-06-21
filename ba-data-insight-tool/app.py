@@ -117,7 +117,6 @@ def file_signature(uploaded) -> str:
 
 def main() -> None:
     inject_custom_css()
-    render_header(APP_TITLE, APP_SUBTITLE)
 
     # Peek at the wizard step before rendering the nav, so that a file
     # uploaded/selected in THIS render already unlocks "columnas" instead
@@ -132,6 +131,8 @@ def main() -> None:
     file_loaded = st.session_state.get("df_loaded", False) or bool(has_new_source)
     analysis_ready = st.session_state.get("analysis_has_run", False)
     step = render_wizard_nav(file_loaded, analysis_ready)
+
+    render_header(APP_TITLE, APP_SUBTITLE, step)
 
     if step == "inicio":
         render_empty_state(load_data)

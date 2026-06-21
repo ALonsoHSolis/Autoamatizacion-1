@@ -68,10 +68,10 @@ class TestCargarStep:
 
     def test_source_controls_render_in_main_area_not_sidebar(self, at):
         _click(at, "btn_cta_cargar")
-        main_buttons = {b.key for b in at.button}
-        sidebar_buttons = {b.key for b in at.sidebar.button}
-        assert "source_btn_Subir archivo" in main_buttons
-        assert "source_btn_Subir archivo" not in sidebar_buttons
+        main_radios = {r.key for r in at.radio}
+        sidebar_radios = {r.key for r in at.sidebar.radio}
+        assert "data_source" in main_radios
+        assert "data_source" not in sidebar_radios
 
         main_uploaders = {u.key for u in at.get("file_uploader")}
         sidebar_uploaders = {u.key for u in at.sidebar.get("file_uploader")}

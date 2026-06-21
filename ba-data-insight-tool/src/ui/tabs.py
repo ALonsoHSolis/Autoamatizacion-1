@@ -60,9 +60,6 @@ from src.ui.dashboard import (
 
 
 def render_step_resumen(ctx: dict) -> None:
-    st.header("Resumen ejecutivo")
-    st.divider()
-
     analysis_ready = ctx["analysis_ready"]
     if analysis_ready:
         render_executive_dashboard(

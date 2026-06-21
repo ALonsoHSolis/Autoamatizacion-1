@@ -18,11 +18,11 @@ HOW_IT_WORKS = [
 ]
 
 WHAT_YOU_GET = [
-    ("Resumen ejecutivo", "KPIs y métricas clave"),
-    ("Calidad de datos", "Score y detección de problemas"),
-    ("Alertas y anomalías", "Detección automática"),
-    ("Insights accionables", "Recomendaciones inteligentes"),
-    ("Exportación", "Excel, PDF y PPTX"),
+    ("📊", "Resumen ejecutivo", "KPIs y métricas clave"),
+    ("🛡️", "Calidad de datos", "Score y detección de problemas"),
+    ("🔔", "Alertas y anomalías", "Detección automática"),
+    ("💡", "Insights accionables", "Recomendaciones inteligentes"),
+    ("📄", "Exportación", "Excel, PDF y PPTX"),
 ]
 
 
@@ -69,10 +69,11 @@ def render_empty_state(load_data=None) -> None:
     st.divider()
     st.subheader("Qué obtendrás")
     cols = st.columns(5)
-    for col, (title, desc) in zip(cols, WHAT_YOU_GET):
+    for col, (icon, title, desc) in zip(cols, WHAT_YOU_GET):
         with col:
             st.markdown(
                 f'<div class="card feature-card">'
+                f'<div class="icon-badge">{icon}</div>'
                 f'<div class="feature-title">{title}</div>'
                 f'<div class="feature-desc">{desc}</div>'
                 f'</div>',
