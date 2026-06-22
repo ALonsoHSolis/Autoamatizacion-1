@@ -62,7 +62,7 @@ def inject_custom_css() -> None:
     .main .block-container h2,
     .main .block-container h3 {
         font-weight: 600;
-        margin-top: 28px;
+        margin-top: 12px;
         margin-bottom: 8px;
     }
     .main .block-container p,
@@ -73,7 +73,7 @@ def inject_custom_css() -> None:
 
     /* ============ Vertical rhythm ============ */
     .main .block-container hr {
-        margin: 20px 0;
+        margin: 12px 0;
         border-color: var(--border-soft) !important;
     }
 
@@ -197,7 +197,7 @@ def inject_custom_css() -> None:
         height: 3px;
     }
     .stTabs [data-baseweb="tab-panel"] {
-        padding-top: 20px;
+        padding-top: 14px;
     }
 
     /* ============ Metrics ============ */

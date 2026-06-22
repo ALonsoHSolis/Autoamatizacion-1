@@ -9,14 +9,14 @@ from .utils import parse_numeric_series
 
 
 PALETTE = [
-    "#3B8BD4",  # blue
-    "#1D9E75",  # teal
-    "#EF9F27",  # amber
-    "#D85A30",  # coral
-    "#7F77DD",  # purple
-    "#D4537E",  # pink
-    "#639922",  # green
-    "#888780",  # gray
+    "#2563EB",  # primary-blue (serie principal)
+    "#22C55E",  # accent-green (positivo/bueno)
+    "#F59E0B",  # accent-amber (secundario/referencia)
+    "#EF4444",  # accent-red (negativo/malo)
+    "#7C3AED",  # accent-purple (categórico extra)
+    "#C026D3",  # magenta (categórico extra, continúa el gradiente de marca)
+    "#38BDF8",  # accent-cyan (línea de contraste sobre barras)
+    "#64748B",  # text-muted (neutro/referencia)
 ]
 
 
@@ -56,7 +56,7 @@ def create_boxplot(df: pd.DataFrame, amount_col: str) -> go.Figure:
 
 def create_null_heatmap(df: pd.DataFrame) -> go.Figure:
     matrix = df.isna().astype(int)
-    fig = px.imshow(matrix, aspect="auto", title="Mapa de datos faltantes", color_continuous_scale=["#f4f7fb", "#cc2f4a"])
+    fig = px.imshow(matrix, aspect="auto", title="Mapa de datos faltantes", color_continuous_scale=["#0B1324", "#EF4444"])
     fig.update_layout(xaxis_title="Columnas", yaxis_title="Filas")
     return fig
 
@@ -127,7 +127,7 @@ def create_waterfall(
             measure=measure,
             x=x_labels,
             y=y_values,
-            connector={"line": {"color": "#B4B2A9", "width": 1}},
+            connector={"line": {"color": "#64748B", "width": 1}},
             increasing={"marker": {"color": PALETTE[1]}},
             decreasing={"marker": {"color": PALETTE[3]}},
             totals={"marker": {"color": PALETTE[0]}},
@@ -196,7 +196,7 @@ def create_pareto_chart(
             y=threshold,
             yref="y2",
             line_dash="dash",
-            line_color="#888780",
+            line_color="#64748B",
             annotation_text=label,
             annotation_position="top right",
         )
@@ -296,7 +296,7 @@ def create_forecast_chart(forecast: dict) -> "go.Figure":
         x=proj_x + proj_x[::-1],
         y=upper + lower[::-1],
         fill="toself",
-        fillcolor="rgba(239,159,39,0.15)",
+        fillcolor="rgba(245, 158, 11, 0.15)",
         line=dict(color="rgba(0,0,0,0)"),
         hoverinfo="skip",
         showlegend=True,

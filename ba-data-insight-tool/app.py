@@ -93,8 +93,13 @@ from src.ui.tabs import render_step_resumen
 
 APP_TITLE = "Herramienta de análisis de datos de BA"
 APP_SUBTITLE = "Análisis automático de datos para equipos de negocio, conciliaciones, pagos, ventas y operaciones."
+LOGO_PATH = ROOT / "assets" / "logo.png"
 
-st.set_page_config(page_title=APP_TITLE, page_icon=":bar_chart:", layout="wide")
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else ":bar_chart:",
+    layout="wide",
+)
 
 
 @st.cache_data(show_spinner=False)
@@ -117,6 +122,9 @@ def file_signature(uploaded) -> str:
 
 def main() -> None:
     inject_custom_css()
+
+    if LOGO_PATH.exists():
+        st.logo(str(LOGO_PATH))
 
     # Peek at the wizard step before rendering the nav, so that a file
     # uploaded/selected in THIS render already unlocks "columnas" instead

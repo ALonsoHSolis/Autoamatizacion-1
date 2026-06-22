@@ -113,20 +113,20 @@ def render_executive_dashboard(
 
     if df is not None and (date_col or category_col):
         st.divider()
-        st.subheader("📈 Tendencias")
-        chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
-        idx = 0
-        if date_col:
-            from src.charts import create_temporal_chart
-            with chart_cols[idx]:
-                st.caption("Tendencia temporal")
-                st.plotly_chart(create_temporal_chart(df, date_col, amount_col), width="stretch", key="exec_dashboard_temporal")
-            idx += 1
-        if category_col:
-            from src.charts import create_category_chart
-            with chart_cols[idx]:
-                st.caption("Distribución por categoría")
-                st.plotly_chart(create_category_chart(df, category_col, amount_col), width="stretch", key="exec_dashboard_category")
+        with st.expander("📈 Tendencias", expanded=False):
+            chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
+            idx = 0
+            if date_col:
+                from src.charts import create_temporal_chart
+                with chart_cols[idx]:
+                    st.caption("Tendencia temporal")
+                    st.plotly_chart(create_temporal_chart(df, date_col, amount_col), width="stretch", key="exec_dashboard_temporal")
+                idx += 1
+            if category_col:
+                from src.charts import create_category_chart
+                with chart_cols[idx]:
+                    st.caption("Distribución por categoría")
+                    st.plotly_chart(create_category_chart(df, category_col, amount_col), width="stretch", key="exec_dashboard_category")
 
     st.divider()
 

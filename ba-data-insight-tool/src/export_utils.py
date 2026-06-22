@@ -58,8 +58,8 @@ def export_pdf(
         bottomMargin=0.75 * inch,
     )
     styles = getSampleStyleSheet()
-    NAVY = colors.HexColor("#1E3A5F")
-    BLUE = colors.HexColor("#2E6DA4")
+    NAVY = colors.HexColor("#0B1324")  # bg-panel
+    BLUE = colors.HexColor("#2563EB")  # primary-blue
     LGRAY = colors.HexColor("#F2F5F8")
 
     title_style = ParagraphStyle("title_s", parent=styles["Title"], textColor=NAVY, fontSize=22, spaceAfter=6)
@@ -159,13 +159,14 @@ def export_pptx(
     from pptx.enum.text import PP_ALIGN
     from pptx.util import Inches, Pt
 
-    NAVY  = RGBColor(0x1E, 0x3A, 0x5F)
-    BLUE  = RGBColor(0x2E, 0x6D, 0xA4)
-    TEAL  = RGBColor(0x1D, 0x9E, 0x75)
+    NAVY  = RGBColor(0x0B, 0x13, 0x24)  # bg-panel
+    BLUE  = RGBColor(0x25, 0x63, 0xEB)  # primary-blue
+    TEAL  = RGBColor(0x22, 0xC5, 0x5E)  # accent-green
     WHITE = RGBColor(0xFF, 0xFF, 0xFF)
     LGRAY = RGBColor(0xF2, 0xF5, 0xF8)
     BLACK = RGBColor(0x1A, 0x1A, 0x1A)
-    RED   = RGBColor(0xC0, 0x39, 0x2B)
+    RED   = RGBColor(0xEF, 0x44, 0x44)  # accent-red
+    AMBER = RGBColor(0xF5, 0x9E, 0x0B)  # accent-amber
 
     prs = Presentation()
     prs.slide_width  = Inches(13.33)
@@ -271,7 +272,7 @@ def export_pptx(
         score = quality_score.get("score", 0)
         label = quality_score.get("label", "")
         score_color = (TEAL if score >= 80
-                       else RGBColor(0xEF,0x9F,0x27) if score >= 55
+                       else AMBER if score >= 55
                        else RED)
         add_rect(slide, 0.4, 1.1, 3.5, 2.5, fill_color=LGRAY)
         add_text(slide, f"{score}/100", 0.55, 1.4, 3.2, 1.2,
