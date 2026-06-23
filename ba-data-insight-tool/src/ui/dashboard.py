@@ -76,8 +76,9 @@ def render_executive_dashboard(
                 "Alta": ("badge-high", "🔴"),
                 "Media": ("badge-medium", "🟡"),
             }.get(top_warning.severity, ("badge-low", "🟢"))
+            severity_class = badge_class.replace("badge-", "alert-")
             st.markdown(
-                f'<div class="card alert-card">'
+                f'<div class="card alert-card {severity_class}">'
                 f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} {top_warning.severity} prioridad</span></div>'
                 f'<div class="card-title">{top_warning.issue}</div>'
                 f'<div class="card-desc">{top_warning.detail}</div>'
@@ -86,7 +87,7 @@ def render_executive_dashboard(
             )
         else:
             st.markdown(
-                '<div class="card alert-card"><div class="card-title">Sin alertas</div>'
+                '<div class="card alert-card alert-low"><div class="card-title">Sin alertas</div>'
                 '<div class="card-desc">No se detectaron advertencias relevantes.</div></div>',
                 unsafe_allow_html=True,
             )
@@ -102,8 +103,9 @@ def render_executive_dashboard(
             action = "Datos listos para análisis y presentación."
             badge_class, badge_icon = "badge-low", "🟢"
         score = quality_score.get("score", 0) if quality_score else 0
+        severity_class = badge_class.replace("badge-", "alert-")
         st.markdown(
-            f'<div class="card alert-card">'
+            f'<div class="card alert-card {severity_class}">'
             f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} Qué revisar primero</span></div>'
             f'<div class="card-title">Calidad de datos: {score}/100</div>'
             f'<div class="card-desc">{action}</div>'

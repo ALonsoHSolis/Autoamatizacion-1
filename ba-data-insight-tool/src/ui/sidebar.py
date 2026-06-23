@@ -23,10 +23,10 @@ ANALYSIS_TYPES = [
 ]
 
 WIZARD_STEPS = [
-    ("inicio", "Inicio"),
-    ("cargar", "Cargar datos"),
-    ("columnas", "Confirmar columnas"),
-    ("resumen", "Resumen ejecutivo"),
+    ("inicio", "Inicio", "🏠"),
+    ("cargar", "Cargar datos", "📥"),
+    ("columnas", "Confirmar columnas", "☑️"),
+    ("resumen", "Resumen ejecutivo", "📊"),
 ]
 
 DATA_SOURCE_OPTIONS = [
@@ -53,7 +53,7 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
 
     Returns the key of the active step (e.g. "resumen").
     """
-    st.sidebar.markdown("### Tu progreso")
+    st.sidebar.markdown('<div class="sidebar-eyebrow">Flujo de análisis</div>', unsafe_allow_html=True)
 
     available_keys = ["inicio", "cargar"]
     if file_loaded:
@@ -71,7 +71,7 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
     if analysis_ready:
         completed_keys.add("resumen")
 
-    for key, label in WIZARD_STEPS:
+    for key, label, type_icon in WIZARD_STEPS:
         locked = key not in available_keys
         is_current = key == current
         done = key in completed_keys and not is_current
@@ -81,7 +81,7 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
         elif locked:
             icon = "🔒"
         else:
-            icon = "⚪"
+            icon = type_icon
 
         button_type = "primary" if is_current else "secondary"
         if st.sidebar.button(
@@ -97,9 +97,9 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
     if analysis_ready:
         st.sidebar.markdown(
             '<div class="progress-complete">'
-            '<div class="progress-ring">100%</div>'
-            '<div class="progress-title">Progreso completo</div>'
-            '<div class="progress-desc">Listo para generar insights</div>'
+            '<div class="progress-ring">✓</div>'
+            '<div class="progress-title">Análisis completado</div>'
+            '<div class="progress-desc">Listo para revisar y exportar</div>'
             '</div>',
             unsafe_allow_html=True,
         )
@@ -110,9 +110,17 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
 
 def render_sidebar_context_card(source_filename: str, profile: dict, analysis_type: str, quality_score: dict | None) -> None:
     """Compact read-only context shown in the sidebar for steps 4-8."""
-    st.sidebar.markdown("### Archivo actual")
-    st.sidebar.write(f"**{source_filename}**")
-    st.sidebar.caption(f"{profile['rows']:,} filas · {profile['columns']} columnas")
+    st.sidebar.markdown('<div class="sidebar-eyebrow">Fuente de datos</div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        '<div class="source-card">'
+        '<div class="source-icon">📄</div>'
+        '<div class="source-info">'
+        f'<div class="source-name">{source_filename}</div>'
+        f'<div class="source-meta">{profile["rows"]:,} filas · {profile["columns"]} col.</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     st.sidebar.caption(f"Tipo de análisis: {analysis_type}")
     if quality_score:
         st.sidebar.caption(f"Calidad de datos: {quality_score['score']}/100")

@@ -17,13 +17,10 @@ import streamlit as st
 
 def inject_custom_css() -> None:
     st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-    /* Fonts loaded via CSS @import, not an HTML link element, because
-       Streamlit's markdown sanitizer strips resource-loading HTML tags
-       from unsafe_allow_html content, which previously broke the whole
-       style block and rendered the raw CSS as visible page text. */
-    @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
     :root {
         /* ---- Lienzo ---- */
         --bg-main: #0A0E17;
@@ -65,14 +62,9 @@ def inject_custom_css() -> None:
         background-color: var(--bg-main);
         font-family: var(--font-ui);
     }
-    /* No font-family override here: it already inherits from the html/body
-       rule above, and re-asserting it on every span (including Streamlit's
-       own icon spans, which rely on a Material Symbols ligature font) wins
-       by specificity and breaks icon rendering - e.g. the sidebar collapse
-       arrow showing the literal text "keyboard_double_arrow_left" instead
-       of the icon glyph. */
     .stApp, .stApp p, .stApp span, .stApp label, .stApp li {
         color: var(--text-main);
+        font-family: var(--font-ui);
     }
     .main .block-container {
         padding-top: 1.6rem;
@@ -364,7 +356,7 @@ def inject_custom_css() -> None:
         border: 2px solid var(--accent-green);
         color: var(--accent-green);
         font-weight: 700;
-        font-size: 20px;
+        font-size: 12px;
         margin-bottom: 6px;
     }
     .progress-complete .progress-title {
@@ -541,181 +533,6 @@ def inject_custom_css() -> None:
     .badge-low {
         background-color: rgba(69, 192, 138, 0.16);
         color: var(--accent-green);
-    }
-
-    /* ============ Hero: etiqueta superior + blur decorativo ============ */
-    .hero-card {
-        position: relative;
-        overflow: hidden;
-    }
-    .hero-card::before {
-        content: "";
-        position: absolute;
-        top: -60px;
-        right: -30px;
-        width: 260px;
-        height: 260px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(91, 141, 239, 0.22) 0%, transparent 70%);
-        pointer-events: none;
-    }
-    .hero-card .eyebrow {
-        position: relative;
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.1em;
-        color: var(--primary-blue);
-        margin-bottom: 10px;
-    }
-    .hero-card h2, .hero-card .hero-subtitle {
-        position: relative;
-    }
-
-    /* ============ Sidebar: flujo de analisis (nav con icono + paso) ============ */
-    .sidebar-eyebrow {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.13em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        padding: 6px 8px 8px 2px;
-    }
-    section[data-testid="stSidebar"] div[class*="st-key-wizard_btn_"] .stButton button {
-        justify-content: flex-start;
-        text-align: left;
-        position: relative;
-        padding-right: 32px;
-        font-weight: 500;
-    }
-    section[data-testid="stSidebar"] div[class*="st-key-wizard_btn_"] .stButton button[kind="secondary"] {
-        background-color: transparent;
-        border-color: transparent;
-        color: var(--text-secondary);
-    }
-    section[data-testid="stSidebar"] div[class*="st-key-wizard_btn_"] .stButton button[kind="secondary"]:hover:not(:disabled) {
-        background-color: rgba(255, 255, 255, 0.04);
-        border-color: transparent;
-        color: var(--text-main);
-    }
-    section[data-testid="stSidebar"] div[class*="st-key-wizard_btn_"] .stButton button[kind="primary"] {
-        background-color: rgba(91, 141, 239, 0.13);
-        border-color: transparent;
-        box-shadow: inset 2px 0 0 var(--primary-blue);
-        color: var(--primary-blue);
-    }
-    .st-key-wizard_btn_inicio .stButton button::after { content: "01"; }
-    .st-key-wizard_btn_cargar .stButton button::after { content: "02"; }
-    .st-key-wizard_btn_columnas .stButton button::after { content: "03"; }
-    .st-key-wizard_btn_resumen .stButton button::after { content: "04"; }
-    section[data-testid="stSidebar"] div[class*="st-key-wizard_btn_"] .stButton button::after {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-    }
-
-    /* ============ Sidebar: tarjeta de fuente de datos ============ */
-    .source-card {
-        margin: 0 4px;
-        padding: 11px 12px;
-        border-radius: 11px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-soft);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .source-card .source-icon {
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
-        background: rgba(69, 192, 138, 0.16);
-        color: var(--accent-green);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        font-size: 14px;
-    }
-    .source-card .source-info {
-        flex: 1;
-        min-width: 0;
-    }
-    .source-card .source-name {
-        font-size: 12.5px;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .source-card .source-meta {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-        margin-top: 1px;
-    }
-
-    /* ============ Header: badge de archivo activo ============ */
-    .file-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-soft);
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        color: var(--text-secondary);
-        margin-bottom: 6px;
-        max-width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .file-badge .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--accent-green);
-        display: inline-block;
-        flex: none;
-    }
-
-    /* ============ Calidad: anillo circular de score ============ */
-    .quality-ring-card {
-        display: flex;
-        align-items: center;
-        gap: 22px;
-        flex-wrap: wrap;
-    }
-    .quality-ring-wrap {
-        position: relative;
-        width: 110px;
-        height: 110px;
-        flex: none;
-    }
-    .quality-ring-wrap .ring-value {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    .quality-ring-wrap .ring-score {
-        font-family: var(--font-mono);
-        font-size: 28px;
-        font-weight: 600;
-        line-height: 1;
-        color: var(--text-main);
-    }
-    .quality-ring-wrap .ring-max {
-        font-size: 10.5px;
-        color: var(--text-muted);
     }
     </style>
     """, unsafe_allow_html=True)

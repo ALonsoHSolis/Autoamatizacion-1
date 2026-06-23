@@ -181,6 +181,7 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
             st.session_state["wizard_step"] = "columnas"
+            st.session_state["source_filename"] = "Google Sheets"
             st.rerun()
         df = gs_df
         new_source_filename = "Google Sheets"
@@ -194,6 +195,7 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
             st.session_state["wizard_step"] = "columnas"
+            st.session_state["source_filename"] = "Batch: " + ", ".join(filenames)
             st.rerun()
         df = batch_df
         new_source_filename = "Batch: " + ", ".join(filenames)
@@ -238,6 +240,7 @@ def main() -> None:
             for key in ["date_column", "amount_column", "category_column", "status_column"]:
                 st.session_state.pop(key, None)
             st.session_state["wizard_step"] = "columnas"
+            st.session_state["source_filename"] = "ventas_mensuales.csv (ejemplo)"
             st.rerun()
         df = demo_df
         new_source_filename = "ventas_mensuales.csv (ejemplo)"

@@ -98,16 +98,43 @@ def render_step_resumen(ctx: dict) -> None:
         render_step_exportar(ctx)
 
 
+def _quality_ring_svg(score: int) -> str:
+    """Circular donut: score 0-100 drawn as a stroke-dashoffset ring."""
+    if score >= 80:
+        color = "#45C08A"
+    elif score >= 55:
+        color = "#E9A94A"
+    else:
+        color = "#E8736B"
+    radius = 50
+    circumference = 2 * 3.14159265 * radius
+    offset = circumference * (1 - max(min(score, 100), 0) / 100)
+    return (
+        f'<div class="quality-ring-wrap">'
+        f'<svg width="110" height="110" viewBox="0 0 118 118">'
+        f'<circle cx="59" cy="59" r="{radius}" fill="none" stroke="#0F1420" stroke-width="11"/>'
+        f'<circle cx="59" cy="59" r="{radius}" fill="none" stroke="{color}" stroke-width="11" '
+        f'stroke-linecap="round" stroke-dasharray="{circumference:.1f}" '
+        f'stroke-dashoffset="{offset:.1f}" transform="rotate(-90 59 59)"/>'
+        f'</svg>'
+        f'<div class="ring-value"><div class="ring-score">{score}</div>'
+        f'<div class="ring-max">/ 100</div></div>'
+        f'</div>'
+    )
+
+
 def render_step_calidad(ctx: dict) -> None:
     quality_score = ctx["quality_score"]
     df = ctx["df"]
     st.subheader("Revisión de calidad")
     st.caption("Antes de tomar decisiones, revisa nulos, duplicados, formatos inválidos y valores sospechosos.")
-    st.metric(
-        label="Calidad del dataset",
-        value=f"{quality_score['score']}/100",
-        delta=quality_score['label'],
-        delta_color=quality_score['color'],
+    st.markdown(
+        f'<div class="card quality-ring-card">'
+        f'{_quality_ring_svg(quality_score["score"])}'
+        f'<div><div style="font-size:16px;font-weight:600;margin-bottom:4px">Calidad del dataset</div>'
+        f'<div style="font-size:13px;color:var(--text-secondary)">{quality_score["label"]}</div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
     )
     render_quality_overview(ctx["warnings_df"])
     with st.expander("Mapa simple de datos faltantes", expanded=False):

@@ -25,6 +25,22 @@ def render_header(app_title: str, app_subtitle: str, step: str | None = None) ->
     if step in STEPS_WITHOUT_BANNER:
         return
     title, subtitle = STEP_TITLES.get(step, (app_title, app_subtitle))
-    st.title(title)
-    st.caption(subtitle)
+
+    source_filename = st.session_state.get("source_filename")
+    show_file_badge = step in ("columnas", "resumen") and source_filename
+
+    if show_file_badge:
+        title_col, badge_col = st.columns([3, 1])
+        with badge_col:
+            st.markdown(
+                f'<div style="text-align:right"><div class="file-badge">'
+                f'<span class="dot"></span>{source_filename}</div></div>',
+                unsafe_allow_html=True,
+            )
+        with title_col:
+            st.title(title)
+            st.caption(subtitle)
+    else:
+        st.title(title)
+        st.caption(subtitle)
     st.divider()
