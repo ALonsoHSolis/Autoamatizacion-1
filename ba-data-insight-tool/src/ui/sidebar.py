@@ -444,6 +444,19 @@ def render_sidebar_column_controls(df: pd.DataFrame, detected: dict, container=N
         render_dark_preview_table(df, max_rows=6)
 
         cols = ["Ninguna"] + list(df.columns)
+        if "anomaly_threshold" not in st.session_state:
+            st.session_state["anomaly_threshold"] = 2.0
+        else:
+            should_reset_threshold = False
+            try:
+                current_threshold = float(st.session_state["anomaly_threshold"])
+            except (TypeError, ValueError):
+                current_threshold = 2.0
+                should_reset_threshold = True
+            clamped_threshold = min(max(current_threshold, 1.0), 4.0)
+            if should_reset_threshold or current_threshold != clamped_threshold:
+                st.session_state["anomaly_threshold"] = clamped_threshold
+
         with target.expander("Ajustar columnas manualmente", expanded=False):
             col_a, col_b = target.columns(2)
             date_col = col_a.selectbox("Fecha", cols, index=select_default(cols, detected.get("date", [])), key="date_column")
@@ -454,7 +467,6 @@ def render_sidebar_column_controls(df: pd.DataFrame, detected: dict, container=N
                 "Sensibilidad para detectar valores atípicos",
                 min_value=1.0,
                 max_value=4.0,
-                value=float(st.session_state.get("anomaly_threshold", 2.0)),
                 step=0.25,
                 key="anomaly_threshold",
                 help="Valores más bajos detectan más registros sospechosos.",
