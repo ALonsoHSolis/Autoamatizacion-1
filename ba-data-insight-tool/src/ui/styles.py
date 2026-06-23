@@ -471,6 +471,17 @@ def inject_custom_css() -> None:
         border: 0;
         justify-content: center;
     }
+    .st-key-uploaded_data_file div[data-testid="stFileUploaderDropzone"] > span,
+    .st-key-batch_uploader div[data-testid="stFileUploaderDropzone"] > span {
+        display: block;
+        width: max-content;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    .st-key-uploaded_data_file div[data-testid="stFileUploaderDropzoneInstructions"],
+    .st-key-batch_uploader div[data-testid="stFileUploaderDropzoneInstructions"] {
+        display: none !important;
+    }
     .st-key-uploaded_data_file div[data-testid="stFileUploader"] button,
     .st-key-batch_uploader div[data-testid="stFileUploader"] button,
     .st-key-btn_source_demo .stButton button {

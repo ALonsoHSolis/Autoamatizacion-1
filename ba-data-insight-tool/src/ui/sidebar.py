@@ -53,6 +53,34 @@ def clean_selection(value: str) -> str | None:
     return None if value == "Ninguna" else value
 
 
+def _render_sidebar_current_source() -> bool:
+    source_filename = st.session_state.get("source_filename")
+    df = st.session_state.get("df")
+    if not source_filename or df is None:
+        return False
+
+    try:
+        rows = len(df)
+        columns = len(df.columns)
+    except Exception:
+        rows = st.session_state.get("profile_rows", 0)
+        columns = st.session_state.get("profile_columns", 0)
+
+    st.sidebar.markdown('<div class="sidebar-eyebrow">Fuente de datos</div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        '<div class="source-card">'
+        '<div class="source-icon">DOC</div>'
+        '<div class="source-info">'
+        '<div class="source-label">Archivo actual</div>'
+        f'<div class="source-name">{source_filename}</div>'
+        f'<div class="source-meta">{rows:,} filas · {columns} col.</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    return True
+
+
 def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
     """Render the 4-step wizard navigation in the sidebar as a vertical
     list of buttons with status (done / current / pending / locked).
@@ -108,6 +136,9 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
             st.session_state["wizard_step"] = key
             st.rerun()
 
+    st.sidebar.divider()
+    _render_sidebar_current_source()
+
     if analysis_ready:
         st.sidebar.markdown(
             '<div class="progress-complete">'
@@ -118,7 +149,6 @@ def render_wizard_nav(file_loaded: bool, analysis_ready: bool) -> str:
             unsafe_allow_html=True,
         )
 
-    st.sidebar.divider()
     return current
 
 
@@ -316,7 +346,7 @@ def render_sidebar_source(load_data, container=None) -> dict:
                     '<div class="upload-icon-large">↑</div>'
                     '<div class="upload-title">Arrastra tu archivo aquí</div>'
                     '<div class="upload-desc">o haz clic para explorar — Excel, CSV o Google Sheet</div>'
-                    '<div class="upload-formats">Formatos: .xlsx · .xls · .csv · máx. 200 MB</div>'
+                    '<div class="upload-formats">FORMATOS: .xlsx · .xls · .csv · .gsheet · MÁX. 200 MB</div>'
                     '</div>',
                     unsafe_allow_html=True,
                 )

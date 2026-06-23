@@ -83,7 +83,6 @@ from src.ui.sidebar import (
     clean_selection,
     render_sidebar_analysis_config,
     render_sidebar_column_controls,
-    render_sidebar_context_card,
     render_sidebar_source,
     render_wizard_nav,
 )
@@ -164,8 +163,10 @@ def main() -> None:
     threshold = config_controls["threshold"]
 
     new_source_filename = None
+    loaded_in_current_step = False
 
     if gs_df is not None:
+        loaded_in_current_step = True
         signature = f"gsheet:{gs_url}"
         if st.session_state.get("active_file_signature") != signature:
             st.session_state["active_file_signature"] = signature
@@ -178,6 +179,7 @@ def main() -> None:
         df = gs_df
         new_source_filename = "Google Sheets"
     elif batch_df is not None:
+        loaded_in_current_step = True
         batch_summary_df = st.session_state.get("batch_summary")
         filenames = batch_summary_df["archivo"].tolist() if batch_summary_df is not None else []
         signature = "batch:" + ",".join(filenames)
@@ -192,6 +194,7 @@ def main() -> None:
         df = batch_df
         new_source_filename = "Batch: " + ", ".join(filenames)
     elif uploaded is not None:
+        loaded_in_current_step = True
         signature = file_signature(uploaded)
         is_new_file = st.session_state.get("active_file_signature") != signature
         if is_new_file:
@@ -236,6 +239,9 @@ def main() -> None:
             st.rerun()
         df = demo_df
         new_source_filename = "ventas_mensuales.csv (ejemplo)"
+    elif step == "cargar" and st.session_state.get("df") is not None:
+        df = st.session_state.get("df")
+        new_source_filename = st.session_state.get("source_filename")
     elif step != "cargar":
         # Past the loading step with no fresh source pending: reuse the
         # already-loaded DataFrame so the source selector doesn't need to
@@ -259,7 +265,7 @@ def main() -> None:
     profile = cached_profile(df)
     detected = profile["detected"]
 
-    if step == "cargar":
+    if step == "cargar" and loaded_in_current_step:
         st.success("Archivo cargado correctamente.")
 
         if st.session_state.get("data_source") == "Base de datos":
@@ -281,12 +287,6 @@ def main() -> None:
                         for fname, missing in batch_validation[
                             "per_file_missing"].items():
                             st.write(f"**{fname}**: {', '.join(missing)}")
-
-    if step in ("columnas", "resumen"):
-        render_sidebar_context_card(
-            source_filename, profile, analysis_type,
-            st.session_state.get("quality_score"),
-        )
 
     controls = render_sidebar_column_controls(df, detected) if step == "columnas" else {
         "amount_col": st.session_state.get("amount_column", "Ninguna"),
@@ -381,7 +381,7 @@ def main() -> None:
         "analysis_type": analysis_type,
     }
 
-    if step == "cargar":
+    if step == "cargar" and loaded_in_current_step:
         st.success("Archivo listo. Pasa a **Confirmar columnas** en el panel de progreso para continuar.")
     elif step == "resumen":
         render_step_resumen(ctx)

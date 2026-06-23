@@ -35,6 +35,23 @@ def _click(at, key, where=None):
     return at
 
 
+def _seed_loaded_step(step: str, analysis_has_run: bool = True):
+    from src.data_loader import load_data
+
+    test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    demo = load_data("sample_data/ventas_mensuales.csv", "ventas_mensuales.csv")
+    test.session_state["demo_df"] = demo
+    test.session_state["df"] = demo
+    test.session_state["df_loaded"] = True
+    test.session_state["source_filename"] = "ventas_mensuales.csv (ejemplo)"
+    test.session_state["active_file_signature"] = "demo:ventas_mensuales"
+    test.session_state["analysis_has_run"] = analysis_has_run
+    test.session_state["active_subtab"] = "Insights"
+    test.session_state["wizard_step"] = step
+    test.run()
+    return test
+
+
 class TestInicioStep:
     def test_loads_without_exceptions(self, at):
         assert len(at.exception) == 0
@@ -59,6 +76,11 @@ class TestInicioStep:
             "wizard_btn_resumen",
         }
 
+    def test_no_result_subtabs_on_inicio_even_after_analysis(self):
+        test = _seed_loaded_step("inicio", analysis_has_run=True)
+        assert "active_subtab" not in {r.key for r in test.radio}
+        assert len(test.exception) == 0
+
 
 class TestCargarStep:
     def test_cta_cargar_navigates_to_cargar_step(self, at):
@@ -82,6 +104,11 @@ class TestCargarStep:
         _click(at, "btn_cta_cargar")
         col_btn = next(b for b in at.sidebar.button if b.key == "wizard_btn_columnas")
         assert col_btn.disabled is True
+
+    def test_no_result_subtabs_on_cargar_even_after_analysis(self):
+        test = _seed_loaded_step("cargar", analysis_has_run=True)
+        assert "active_subtab" not in {r.key for r in test.radio}
+        assert len(test.exception) == 0
 
 
 class TestDemoDataFlow:
@@ -116,6 +143,11 @@ class TestDemoDataFlow:
         main_button_keys = {b.key for b in at.button}
         assert "run_analysis_button" in main_button_keys
 
+    def test_no_result_subtabs_on_columnas_even_after_analysis(self):
+        test = _seed_loaded_step("columnas", analysis_has_run=True)
+        assert "active_subtab" not in {r.key for r in test.radio}
+        assert len(test.exception) == 0
+
 
 class TestRunAnalysisAutoAdvance:
     """Covers clicking 'Ejecutar análisis' on the columnas step: it should
@@ -144,19 +176,7 @@ class TestResumenSubtabs:
     """
 
     def _seed_resumen(self):
-        from src.data_loader import load_data
-
-        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
-        demo = load_data("sample_data/ventas_mensuales.csv", "ventas_mensuales.csv")
-        test.session_state["demo_df"] = demo
-        test.session_state["df"] = demo
-        test.session_state["df_loaded"] = True
-        test.session_state["source_filename"] = "ventas_mensuales.csv (ejemplo)"
-        test.session_state["active_file_signature"] = "demo:ventas_mensuales"
-        test.session_state["analysis_has_run"] = True
-        test.session_state["wizard_step"] = "resumen"
-        test.run()
-        return test
+        return _seed_loaded_step("resumen", analysis_has_run=True)
 
     def test_renders_without_exceptions(self):
         test = self._seed_resumen()

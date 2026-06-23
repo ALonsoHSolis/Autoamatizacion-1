@@ -42,7 +42,7 @@ def render_header(app_title: str, app_subtitle: str, step: str | None = None) ->
     source_filename = st.session_state.get("source_filename")
     analysis_type = st.session_state.get("analysis_type", "General")
     analysis_ready = st.session_state.get("analysis_has_run", False)
-    show_file_badge = bool(source_filename) and (step in ("cargar", "columnas", "resumen") or analysis_ready)
+    show_file_badge = bool(source_filename) and step in ("columnas", "resumen")
     if step == "resumen" and analysis_ready:
         active_subtab = st.session_state.get("active_subtab", "Resumen")
         if active_subtab not in SUBTAB_OPTIONS:
@@ -116,7 +116,7 @@ def render_header(app_title: str, app_subtitle: str, step: str | None = None) ->
             unsafe_allow_html=True,
         )
 
-    if analysis_ready:
+    if step == "resumen" and analysis_ready:
         if st.session_state.get("active_subtab") not in SUBTAB_OPTIONS:
             st.session_state["active_subtab"] = "Resumen"
         st.radio(
@@ -126,16 +126,6 @@ def render_header(app_title: str, app_subtitle: str, step: str | None = None) ->
             horizontal=True,
             label_visibility="collapsed",
             on_change=_go_to_resumen_subtab,
-        )
-    elif step in ("cargar", "columnas"):
-        st.markdown(
-            '<div class="readonly-tabs">'
-            '<span>Resumen</span>'
-            '<span>Calidad de datos</span>'
-            '<span>Insights</span>'
-            '<span>Exportar</span>'
-            '</div>',
-            unsafe_allow_html=True,
         )
 
     st.divider()

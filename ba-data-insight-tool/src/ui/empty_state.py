@@ -30,9 +30,9 @@ def render_empty_state(load_data=None) -> None:
     st.markdown(
         '<div class="card hero-card">'
         '<div class="eyebrow">DE PLANILLA A DECISIÓN</div>'
-        '<h2>Convierte tus datos en <span class="accent">insights</span> de negocio en minutos</h2>'
+        '<h2>Convierte tus datos en <span class="accent">insights de negocio</span> en minutos</h2>'
         '<p class="hero-subtitle">Carga un Excel, CSV o Google Sheet y obtén KPIs, calidad de datos, '
-        'alertas, tendencias y recomendaciones accionables sin preparación previa.</p>'
+        'alertas, tendencias y recomendaciones accionables — sin preparación previa.</p>'
         '</div>',
         unsafe_allow_html=True,
     )
