@@ -163,30 +163,37 @@ class TestResumenSubtabs:
         assert len(test.exception) == 0
         assert test.session_state["wizard_step"] == "resumen"
 
-    def test_all_five_subtabs_present(self):
+    def test_main_subtabs_present(self):
         test = self._seed_resumen()
-        labels = {t.label for t in test.tabs}
+        from src.ui.header import SUBTAB_OPTIONS
+
+        labels = set(next(r for r in test.radio if r.key == "active_subtab").options)
+        assert labels == set(SUBTAB_OPTIONS)
         assert {
             "Resumen",
             "Calidad de datos",
-            "Análisis",
-            "Insights y recomendaciones",
+            "Insights",
             "Exportar",
         } <= labels
 
     def test_analisis_subtab_nested_sub_subtabs_present(self):
-        """Verifies st.tabs nested inside st.tabs (Análisis has its own
-        6 sub-sections) still render correctly under the new structure."""
+        """Verifies the Análisis section still declares its 6 sub-sections.
+
+        The top-level resumen navigation is a radio styled as underline tabs,
+        so AppTest should not assert those labels through test.tabs anymore.
+        """
         test = self._seed_resumen()
-        labels = {t.label for t in test.tabs}
-        assert {
+        from src.ui.tabs import ANALYSIS_SUBTAB_OPTIONS
+
+        assert set(ANALYSIS_SUBTAB_OPTIONS) == {
             "Básico",
             "Categorías y Pareto",
             "Tabla pivot",
             "Segmentación",
             "Limpieza",
             "Avanzado",
-        } <= labels
+        }
+        assert len(test.exception) == 0
 
     def test_context_card_shows_in_sidebar(self):
         test = self._seed_resumen()

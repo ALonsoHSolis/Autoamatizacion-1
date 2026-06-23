@@ -1,17 +1,31 @@
 """Header rendering for BA Data Insight Tool."""
 from __future__ import annotations
 
+from html import escape
+
 import streamlit as st
 
 STEP_TITLES = {
-    "inicio": ("Bienvenido a tu panel de análisis", "Sigue los pasos para transformar tus datos en decisiones inteligentes."),
-    "columnas": ("Confirmar columnas", "Revisa y ajusta las columnas clave detectadas en tu archivo."),
+    "inicio": ("Bienvenido", "Convierte tus datos en decisiones de negocio"),
+    "cargar": ("Cargar datos", "Sube un archivo o conecta una fuente para empezar"),
+    "columnas": ("Confirmar columnas", "Revisa la detección automática antes de analizar"),
     "resumen": ("Resumen ejecutivo", "KPIs, calidad de datos, análisis e insights de tu archivo."),
 }
 
-# "cargar" has no banner: its own "Cargar archivo" subheader already
-# introduces the step, so the big gradient title would be redundant.
-STEPS_WITHOUT_BANNER = {"cargar"}
+STEPS_WITHOUT_BANNER = set()
+
+SUBTAB_OPTIONS = ["Resumen", "Calidad de datos", "Insights", "Exportar"]
+
+SECTION_TITLES = {
+    "Resumen": ("Resumen ejecutivo", "{source} · análisis de {analysis_type}"),
+    "Calidad de datos": ("Calidad de datos", "Validaciones automáticas y score de confianza"),
+    "Insights": ("Insights y recomendaciones", "Qué pasa, dónde impacta y qué hacer"),
+    "Exportar": ("Exportar informe", "Descarga el análisis en el formato que necesites"),
+}
+
+
+def _go_to_resumen_subtab() -> None:
+    st.session_state["wizard_step"] = "resumen"
 
 
 def render_header(app_title: str, app_subtitle: str, step: str | None = None) -> None:
@@ -24,23 +38,104 @@ def render_header(app_title: str, app_subtitle: str, step: str | None = None) ->
     """
     if step in STEPS_WITHOUT_BANNER:
         return
-    title, subtitle = STEP_TITLES.get(step, (app_title, app_subtitle))
 
     source_filename = st.session_state.get("source_filename")
-    show_file_badge = step in ("columnas", "resumen") and source_filename
+    analysis_type = st.session_state.get("analysis_type", "General")
+    analysis_ready = st.session_state.get("analysis_has_run", False)
+    show_file_badge = bool(source_filename) and (step in ("cargar", "columnas", "resumen") or analysis_ready)
+    if step == "resumen" and analysis_ready:
+        active_subtab = st.session_state.get("active_subtab", "Resumen")
+        if active_subtab not in SUBTAB_OPTIONS:
+            active_subtab = "Resumen"
+        title, subtitle_template = SECTION_TITLES.get(active_subtab, SECTION_TITLES["Resumen"])
+        subtitle = subtitle_template.format(source=source_filename or "archivo", analysis_type=analysis_type)
+    else:
+        title, subtitle = STEP_TITLES.get(step, (app_title, app_subtitle))
 
-    if show_file_badge:
-        title_col, badge_col = st.columns([3, 1])
-        with badge_col:
+    if show_file_badge and analysis_ready:
+        title_col, badge_col, action_col = st.columns([4.4, 0.9, 0.55], vertical_alignment="top")
+        with title_col:
             st.markdown(
-                f'<div style="text-align:right"><div class="file-badge">'
-                f'<span class="dot"></span>{source_filename}</div></div>',
+                '<div class="app-page-header">'
+                '<div class="app-header-kicker">BA DATA INSIGHT TOOL</div>'
+                f'<h1 class="app-header-title">{escape(title)}</h1>'
+                f'<div class="app-header-subtitle">{escape(subtitle)}</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
+        with badge_col:
+            st.markdown(
+                f'<div style="text-align:right"><div class="file-badge" title="{escape(source_filename)}">'
+                f'<span class="dot"></span>{escape(source_filename)}</div></div>',
+                unsafe_allow_html=True,
+            )
+        with action_col:
+            if st.button(
+                "Exportar",
+                key="btn_header_exportar",
+                width="stretch",
+                type="primary",
+                icon=":material/upload:",
+            ):
+                st.session_state["active_subtab"] = "Exportar"
+                st.session_state["wizard_step"] = "resumen"
+                st.rerun()
+    elif show_file_badge:
+        title_col, badge_col, action_col = st.columns([4.4, 0.9, 0.55], vertical_alignment="top")
         with title_col:
-            st.title(title)
-            st.caption(subtitle)
+            st.markdown(
+                '<div class="app-page-header">'
+                '<div class="app-header-kicker">BA DATA INSIGHT TOOL</div>'
+                f'<h1 class="app-header-title">{escape(title)}</h1>'
+                f'<div class="app-header-subtitle">{escape(subtitle)}</div>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with badge_col:
+            st.markdown(
+                f'<div style="text-align:right"><div class="file-badge" title="{escape(source_filename)}">'
+                f'<span class="dot"></span>{escape(source_filename)}</div></div>',
+                unsafe_allow_html=True,
+            )
+        with action_col:
+            st.button(
+                "Exportar",
+                key="btn_header_exportar_disabled",
+                width="stretch",
+                type="primary",
+                icon=":material/upload:",
+                disabled=True,
+            )
     else:
-        st.title(title)
-        st.caption(subtitle)
+        st.markdown(
+            '<div class="app-page-header">'
+            '<div class="app-header-kicker">BA DATA INSIGHT TOOL</div>'
+            f'<h1 class="app-header-title">{escape(title)}</h1>'
+            f'<div class="app-header-subtitle">{escape(subtitle)}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    if analysis_ready:
+        if st.session_state.get("active_subtab") not in SUBTAB_OPTIONS:
+            st.session_state["active_subtab"] = "Resumen"
+        st.radio(
+            "Secciones",
+            SUBTAB_OPTIONS,
+            key="active_subtab",
+            horizontal=True,
+            label_visibility="collapsed",
+            on_change=_go_to_resumen_subtab,
+        )
+    elif step in ("cargar", "columnas"):
+        st.markdown(
+            '<div class="readonly-tabs">'
+            '<span>Resumen</span>'
+            '<span>Calidad de datos</span>'
+            '<span>Insights</span>'
+            '<span>Exportar</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
     st.divider()

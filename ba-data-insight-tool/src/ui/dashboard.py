@@ -6,30 +6,150 @@ by src/ui/tabs.py.
 """
 from __future__ import annotations
 
+from html import escape
+
 import pandas as pd
 import streamlit as st
+
+from src.utils import format_currency, format_number, parse_date_series, parse_numeric_series
+from src.kpi_engine import category_ranking
 
 PREVIEW_ROWS = 20
 
 
-def render_column_detection_cards(detected: dict) -> None:
+def _html(value) -> str:
+    return escape(str(value), quote=True)
+
+
+def _first_detected(detected: dict, key: str, exclude: set[str] | None = None) -> str | None:
+    excluded = exclude or set()
+    for value in detected.get(key, []):
+        if value not in excluded:
+            return value
+    return None
+
+
+def _find_channel_column(df: pd.DataFrame | None, detected: dict) -> str | None:
+    if df is None:
+        return None
+    candidates = list(detected.get("category", [])) + list(df.columns)
+    for col in candidates:
+        normalized = str(col).lower()
+        if "canal" in normalized or "channel" in normalized:
+            return col
+    return None
+
+
+def _column_meta(df: pd.DataFrame | None, col: str | None, kind: str) -> str:
+    if not col or df is None or col not in df:
+        return "No detectada"
+    series = df[col]
+    if kind == "date":
+        parsed = parse_date_series(series).dropna()
+        if parsed.empty:
+            return "Formato fecha"
+        months = parsed.dt.to_period("M").nunique()
+        return f"Formato ISO · {months} meses"
+    if kind == "amount":
+        numeric = parse_numeric_series(series)
+        valid_pct = numeric.notna().mean() * 100
+        return f"Numérico · {valid_pct:.0f}% válido"
+    unique = series.nunique(dropna=True)
+    return f"{unique} valores únicos"
+
+
+def render_column_detection_cards(detected: dict, df: pd.DataFrame | None = None) -> None:
     """Show detected date/amount/category/status columns as cards."""
+    channel_col = _find_channel_column(df, detected)
+    category_col = _first_detected(detected, "category", exclude={channel_col} if channel_col else set())
     labels = [
-        ("date", "Fecha detectada"),
-        ("amount", "Monto detectado"),
-        ("category", "Categoría detectada"),
-        ("status", "Estado detectado"),
+        ("date", "Fecha", _first_detected(detected, "date"), "blue"),
+        ("amount", "Monto", _first_detected(detected, "amount"), "green"),
+        ("category", "Categoría", category_col, "purple"),
+        ("channel", "Canal", channel_col, "amber"),
     ]
     cols = st.columns(4)
-    for col, (key, title) in zip(cols, labels):
-        values = detected.get(key, [])
-        value_text = ", ".join(values) if values else "No detectada"
+    for col, (key, title, value, color) in zip(cols, labels):
+        value_text = value if value else "No detectada"
+        meta = _column_meta(df, value, key)
         with col:
             st.markdown(
-                f'<div class="card detect-card">'
-                f'<div class="detect-title">{title}</div>'
-                f'<div class="detect-value">{value_text}</div>'
+                f'<div class="card detect-card detect-card-premium">'
+                f'<div class="detect-title"><span class="detect-dot {color}"></span>{_html(title)}</div>'
+                f'<div class="detect-value">{_html(value_text)}</div>'
+                f'<div class="detect-meta">{_html(meta)}</div>'
                 f'</div>',
+                unsafe_allow_html=True,
+            )
+
+
+def _format_preview_cell(value) -> str:
+    if pd.isna(value):
+        return "—"
+    if hasattr(value, "strftime"):
+        try:
+            return value.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return format_number(value)
+    return str(value)
+
+
+def render_dark_preview_table(df: pd.DataFrame, max_rows: int = 6, max_cols: int = 8) -> None:
+    """Render a compact HTML preview table styled like the reference."""
+    visible = df.head(max_rows).iloc[:, :max_cols].copy()
+    header = "".join(f"<th>{_html(col).upper()}</th>" for col in visible.columns)
+    rows = []
+    for _, row in visible.iterrows():
+        cells = "".join(f"<td>{_html(_format_preview_cell(row[col]))}</td>" for col in visible.columns)
+        rows.append(f"<tr>{cells}</tr>")
+    st.markdown(
+        '<div class="preview-head">'
+        f'<span>Vista previa · primeras {min(max_rows, len(df))} filas</span>'
+        f'<span>{len(df):,} filas · {len(df.columns)} columnas</span>'
+        '</div>'
+        '<div class="dark-table-wrap">'
+        '<table class="dark-preview-table">'
+        f'<thead><tr>{header}</tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody>'
+        '</table>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _compact_currency(value: float | int | None) -> str:
+    if value is None:
+        return "N/A"
+    number = float(value)
+    sign = "-" if number < 0 else ""
+    number = abs(number)
+    if number >= 1_000_000:
+        return f"{sign}${number / 1_000_000:.1f}M".replace(".", ",")
+    if number >= 1_000:
+        return f"{sign}${number / 1_000:.1f}K".replace(".", ",")
+    return format_currency(number)
+
+
+def _find_text_column(df: pd.DataFrame, keywords: tuple[str, ...]) -> str | None:
+    for col in df.columns:
+        normalized = str(col).lower()
+        if any(word in normalized for word in keywords):
+            return col
+    return None
+
+
+def _render_kpi_cards(cards: list[tuple[str, str, str, str]]) -> None:
+    cols = st.columns(len(cards))
+    for col, (title, value, delta, tone) in zip(cols, cards):
+        with col:
+            st.markdown(
+                '<div class="dashboard-kpi-card">'
+                f'<div class="dashboard-kpi-title">{_html(title)}</div>'
+                f'<div class="dashboard-kpi-value">{_html(value)}</div>'
+                f'<div class="dashboard-kpi-delta {tone}">{_html(delta)}</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
 
@@ -46,27 +166,47 @@ def render_executive_dashboard(
     category_col: str | None = None,
 ) -> None:
     """Render the executive dashboard: KPI cards, quality, alert and charts."""
-    st.subheader("📁 Archivo analizado")
-    st.markdown(f"**{source_filename}**")
-    st.caption(f"{profile['rows']:,} filas · {profile['columns']} columnas")
-    st.divider()
+    st.markdown('<div class="section-kicker">KPIs principales</div>', unsafe_allow_html=True)
+    total_amount = None
+    ticket_avg = None
+    if df is not None and amount_col and amount_col in df:
+        amounts = parse_numeric_series(df[amount_col])
+        valid_amounts = amounts.dropna()
+        if not valid_amounts.empty:
+            total_amount = float(valid_amounts.sum())
+            ticket_avg = float(valid_amounts.mean())
+    ticket_col = _find_text_column(df, ("ticket",)) if df is not None else None
+    if df is not None and ticket_col:
+        ticket_values = parse_numeric_series(df[ticket_col]).dropna()
+        if not ticket_values.empty:
+            ticket_avg = float(ticket_values.mean())
+    client_col = _find_text_column(df, ("cliente", "customer", "rut", "email", "id")) if df is not None else None
+    client_value = "N/A"
+    if df is not None and client_col:
+        if pd.api.types.is_numeric_dtype(df[client_col]):
+            client_value = f"{int(parse_numeric_series(df[client_col]).sum()):,}".replace(",", ".")
+        else:
+            client_value = f"{df[client_col].nunique():,}".replace(",", ".")
+    channel_col = _find_channel_column(df, {"category": [category_col] if category_col else []}) if df is not None else None
+    channel_label = "N/A"
+    channel_meta = "Sin canal detectado"
+    if df is not None:
+        lead_col = channel_col or category_col
+        if lead_col and lead_col in df:
+            ranking = category_ranking(df, lead_col, amount_col)
+            if not ranking.empty:
+                channel_label = str(ranking.iloc[0]["categoria"])
+                channel_meta = f"{ranking.iloc[0]['participacion_pct']:.0f}% del total"
+    cards = [
+        ("Ventas totales", _compact_currency(total_amount), "^ listo para analizar", "positive"),
+        ("Ticket promedio", _compact_currency(ticket_avg), "^ promedio calculado", "positive"),
+        ("Transacciones", f"{len(df):,}".replace(",", ".") if df is not None else "0", "^ volumen total", "positive"),
+        ("Clientes únicos", client_value, "— estable", "muted"),
+        ("Canal líder", channel_label, channel_meta, "muted"),
+    ]
+    _render_kpi_cards(cards)
 
-    st.subheader("📊 KPIs principales")
-    if not kpis_df.empty:
-        kpi_rows = kpis_df.head(4).to_dict("records")
-        cols = st.columns(len(kpi_rows))
-        for col, row in zip(cols, kpi_rows):
-            col.metric(str(row["kpi"]), str(row["valor"]))
-    else:
-        st.warning(
-            "No se calcularon KPIs con la configuración actual. "
-            "Revisa en **Confirmar columnas** que la columna de monto esté bien mapeada, "
-            "y que el archivo tenga datos en esa columna."
-        )
-    st.divider()
-
-    st.subheader("⚠️ Alertas y prioridades")
-    st.caption("Lo más urgente a revisar antes de tomar decisiones con estos datos.")
+    st.markdown('<div class="section-kicker">Alertas y prioridades</div>', unsafe_allow_html=True)
     alert_col, priority_col = st.columns(2)
     with alert_col:
         if warnings:
@@ -79,9 +219,9 @@ def render_executive_dashboard(
             severity_class = badge_class.replace("badge-", "alert-")
             st.markdown(
                 f'<div class="card alert-card {severity_class}">'
-                f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} {top_warning.severity} prioridad</span></div>'
-                f'<div class="card-title">{top_warning.issue}</div>'
-                f'<div class="card-desc">{top_warning.detail}</div>'
+                f'<div class="card-header"><span class="badge {badge_class}">{_html(top_warning.severity)} prioridad</span></div>'
+                f'<div class="card-title">{_html(top_warning.issue)}</div>'
+                f'<div class="card-desc">{_html(top_warning.detail)}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -95,42 +235,43 @@ def render_executive_dashboard(
     with priority_col:
         if quality_score and quality_score.get("score", 100) < 70:
             action = "Revisar y corregir datos antes de presentar resultados a stakeholders."
-            badge_class, badge_icon = "badge-high", "🔴"
+            badge_class = "badge-high"
         elif warnings and any(w.severity == "Alta" for w in warnings):
             action = "Resolver advertencias de severidad alta primero."
-            badge_class, badge_icon = "badge-high", "🔴"
+            badge_class = "badge-high"
         else:
             action = "Datos listos para análisis y presentación."
-            badge_class, badge_icon = "badge-low", "🟢"
+            badge_class = "badge-low"
         score = quality_score.get("score", 0) if quality_score else 0
         severity_class = badge_class.replace("badge-", "alert-")
         st.markdown(
             f'<div class="card alert-card {severity_class}">'
-            f'<div class="card-header"><span class="badge {badge_class}">{badge_icon} Qué revisar primero</span></div>'
+            f'<div class="card-header"><span class="badge {badge_class}">Qué revisar primero</span></div>'
             f'<div class="card-title">Calidad de datos: {score}/100</div>'
-            f'<div class="card-desc">{action}</div>'
+            f'<div class="card-desc">{_html(action)}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
     if df is not None and (date_col or category_col):
-        st.divider()
-        with st.expander("📈 Tendencias", expanded=False):
-            chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
-            idx = 0
-            if date_col:
-                from src.charts import create_temporal_chart
-                with chart_cols[idx]:
-                    st.caption("Tendencia temporal")
-                    st.plotly_chart(create_temporal_chart(df, date_col, amount_col), width="stretch", key="exec_dashboard_temporal")
-                idx += 1
-            if category_col:
-                from src.charts import create_category_chart
-                with chart_cols[idx]:
-                    st.caption("Distribución por categoría")
-                    st.plotly_chart(create_category_chart(df, category_col, amount_col), width="stretch", key="exec_dashboard_category")
-
-    st.divider()
+        st.markdown('<div class="section-kicker">Tendencias</div>', unsafe_allow_html=True)
+        chart_cols = st.columns(2) if (date_col and category_col) else st.columns(1)
+        idx = 0
+        if date_col:
+            from src.charts import create_temporal_chart
+            with chart_cols[idx]:
+                st.markdown('<div class="chart-panel-title">Ventas por mes</div>', unsafe_allow_html=True)
+                fig = create_temporal_chart(df, date_col, amount_col)
+                fig.update_layout(title_text="", height=310, margin={"l": 42, "r": 22, "t": 18, "b": 36})
+                st.plotly_chart(fig, width="stretch", key="exec_dashboard_temporal")
+            idx += 1
+        if category_col:
+            from src.charts import create_category_chart
+            with chart_cols[idx]:
+                st.markdown('<div class="chart-panel-title">Ventas por categoría</div>', unsafe_allow_html=True)
+                fig = create_category_chart(df, category_col, amount_col)
+                fig.update_layout(title_text="", height=310, margin={"l": 96, "r": 24, "t": 18, "b": 36})
+                st.plotly_chart(fig, width="stretch", key="exec_dashboard_category")
 
 
 def render_summary_metrics(profile: dict, warnings_df: pd.DataFrame) -> None:
@@ -171,6 +312,7 @@ def render_quality_overview(warnings_df: pd.DataFrame) -> None:
     medium = int((display["severity"] == "Media").sum())
     low = int((display["severity"] == "Baja").sum())
 
+    st.markdown('<div class="section-kicker">Validaciones detectadas</div>', unsafe_allow_html=True)
     col_a, col_b, col_c = st.columns(3)
     col_a.metric("Alta", high)
     col_b.metric("Media", medium)
@@ -234,8 +376,14 @@ def build_default_recommendations(profile: dict, warnings_df: pd.DataFrame, anom
 
 
 def render_insights(insights: dict, kpis_df: pd.DataFrame, profile: dict, anomalies: pd.DataFrame) -> None:
-    st.subheader("Resumen ejecutivo")
-    st.info(str(insights.get("resumen_ejecutivo", "No hay resumen disponible.")))
+    summary = str(insights.get("resumen_ejecutivo", "No hay resumen disponible."))
+    st.markdown(
+        '<div class="insight-summary-card">'
+        '<div class="section-kicker" style="margin:0 0 9px 0">Resumen ejecutivo</div>'
+        f'<div class="summary-text">{_html(summary)}</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     findings = insights.get("hallazgos", [])
     actions = insights.get("acciones_recomendadas", [])
@@ -259,25 +407,37 @@ def render_insights(insights: dict, kpis_df: pd.DataFrame, profile: dict, anomal
     if not anomalies.empty:
         evidence += f" Además, se detectaron {len(anomalies)} registros sospechosos."
 
-    for idx, finding in enumerate(findings[:6], start=1):
-        with st.expander(f"Insight {idx}: {str(finding)[:80]}", expanded=idx == 1):
-            st.write("**Hallazgo principal**")
-            st.write(finding)
-            st.write("**Evidencia**")
-            st.write(evidence)
-            st.write("**Interpretación de negocio**")
-            st.write("Este punto ayuda a priorizar revisión, seguimiento o segmentación antes de presentar conclusiones finales.")
-            st.write("**Acción recomendada**")
-            if actions:
-                st.write(actions[min(idx - 1, len(actions) - 1)])
-            elif risks:
-                st.write(risks[min(idx - 1, len(risks) - 1)])
-            else:
-                st.write("Validar el hallazgo con el equipo dueño del proceso.")
+    st.markdown('<div class="section-kicker">Hallazgos principales</div>', unsafe_allow_html=True)
+    for idx, finding in enumerate(findings[:3], start=1):
+        if actions:
+            action = actions[min(idx - 1, len(actions) - 1)]
+        elif risks:
+            action = risks[min(idx - 1, len(risks) - 1)]
+        else:
+            action = "Validar el hallazgo con el equipo dueño del proceso."
+        st.markdown(
+            '<div class="insight-card">'
+            '<div class="insight-card-head">'
+            f'<div class="insight-number">{idx:02d}</div>'
+            f'<div class="insight-title">{_html(finding)}</div>'
+            '</div>'
+            '<div class="insight-grid">'
+            '<div>'
+            '<div class="insight-label">Evidencia</div>'
+            f'<div class="insight-copy">{_html(evidence)}</div>'
+            '</div>'
+            '<div>'
+            '<div class="insight-label">Acción recomendada</div>'
+            f'<div class="insight-copy">{_html(action)}</div>'
+            '</div>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def render_recommendations(insights: dict, default_recommendations: list[str]) -> None:
-    st.subheader("Recomendaciones iniciales")
+    st.markdown('<div class="section-kicker">Recomendaciones iniciales</div>', unsafe_allow_html=True)
     actions = insights.get("acciones_recomendadas", [])
     risks = insights.get("riesgos", [])
     questions = insights.get("preguntas_negocio", [])
@@ -289,8 +449,15 @@ def render_recommendations(insights: dict, default_recommendations: list[str]) -
     if isinstance(questions, str):
         questions = [questions]
 
-    for recommendation in list(actions) + default_recommendations:
-        st.write(f"- {recommendation}")
+    items = list(dict.fromkeys(list(actions) + default_recommendations))
+    html_items = "".join(
+        '<div class="recommendation-item">'
+        '<span class="recommendation-check">✓</span>'
+        f'<span>{_html(recommendation)}</span>'
+        '</div>'
+        for recommendation in items[:8]
+    )
+    st.markdown(f'<div class="recommendation-list">{html_items}</div>', unsafe_allow_html=True)
 
     with st.expander("Riesgos y preguntas para profundizar", expanded=False):
         if risks:

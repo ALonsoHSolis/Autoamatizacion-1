@@ -3,21 +3,54 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 
 from .kpi_engine import category_ranking, pareto_analysis, status_summary, temporal_trend
 from .utils import parse_numeric_series
 
 
 PALETTE = [
-    "#2563EB",  # primary-blue (serie principal)
-    "#22C55E",  # accent-green (positivo/bueno)
-    "#F59E0B",  # accent-amber (secundario/referencia)
-    "#EF4444",  # accent-red (negativo/malo)
-    "#7C3AED",  # accent-purple (categórico extra)
-    "#C026D3",  # magenta (categórico extra, continúa el gradiente de marca)
-    "#38BDF8",  # accent-cyan (línea de contraste sobre barras)
-    "#64748B",  # text-muted (neutro/referencia)
+    "#5B8DEF",  # primary-blue
+    "#45C08A",  # accent-green
+    "#E9A94A",  # accent-amber
+    "#E8736B",  # accent-red
+    "#A78BFA",  # accent-purple
+    "#38BDF8",  # cyan support
+    "#9AA5B8",  # text-secondary
+    "#5E6A7E",  # text-muted
 ]
+
+pio.templates["ba_dark"] = go.layout.Template(
+    layout={
+        "paper_bgcolor": "#131A26",
+        "plot_bgcolor": "#131A26",
+        "font": {"family": "Hanken Grotesk, system-ui, sans-serif", "color": "#EEF2F9"},
+        "title": {"font": {"size": 16, "color": "#EEF2F9"}},
+        "colorway": PALETTE,
+        "legend": {
+            "font": {"color": "#9AA5B8"},
+            "bgcolor": "rgba(0,0,0,0)",
+        },
+        "margin": {"l": 44, "r": 24, "t": 54, "b": 42},
+        "xaxis": {
+            "gridcolor": "rgba(255,255,255,0.07)",
+            "zerolinecolor": "rgba(255,255,255,0.10)",
+            "linecolor": "rgba(255,255,255,0.07)",
+            "tickfont": {"color": "#9AA5B8"},
+            "title": {"font": {"color": "#9AA5B8"}},
+        },
+        "yaxis": {
+            "gridcolor": "rgba(255,255,255,0.07)",
+            "zerolinecolor": "rgba(255,255,255,0.10)",
+            "linecolor": "rgba(255,255,255,0.07)",
+            "tickfont": {"color": "#9AA5B8"},
+            "title": {"font": {"color": "#9AA5B8"}},
+        },
+    }
+)
+pio.templates.default = "ba_dark"
+px.defaults.template = "ba_dark"
+px.defaults.color_discrete_sequence = PALETTE
 
 
 def create_temporal_chart(df: pd.DataFrame, date_col: str, amount_col: str | None = None) -> go.Figure:

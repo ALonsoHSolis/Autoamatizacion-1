@@ -8,6 +8,9 @@ shell changed.
 """
 from __future__ import annotations
 
+import re
+from html import escape
+
 import pandas as pd
 import streamlit as st
 
@@ -58,43 +61,46 @@ from src.ui.dashboard import (
     render_summary_metrics,
 )
 
+ANALYSIS_SUBTAB_OPTIONS = [
+    "Básico",
+    "Categorías y Pareto",
+    "Tabla pivot",
+    "Segmentación",
+    "Limpieza",
+    "Avanzado",
+]
+
 
 def render_step_resumen(ctx: dict) -> None:
     analysis_ready = ctx["analysis_ready"]
-    if analysis_ready:
-        render_executive_dashboard(
-            ctx["quality_score"],
-            ctx["warnings"],
-            ctx["kpis_df"],
-            ctx["source_filename"],
-            ctx["profile"],
-            df=ctx["df"],
-            date_col=ctx["date_col"],
-            amount_col=ctx["amount_col"],
-            category_col=ctx["category_col"],
-        )
+    active = st.session_state.get("active_subtab", "Resumen")
+    if active == "Insights y recomendaciones":
+        active = "Insights"
+        st.session_state["active_subtab"] = active
 
-    sub_tabs = st.tabs([
-        "Resumen",
-        "Calidad de datos",
-        "Análisis",
-        "Insights y recomendaciones",
-        "Exportar",
-    ])
-    with sub_tabs[0]:
-        st.subheader("🧮 Resumen del dataset")
-        st.caption("Conteos generales para confirmar que el archivo se cargó como esperabas.")
-        render_summary_metrics(ctx["profile"], ctx["warnings_df"])
-        st.divider()
-        st.subheader("👀 Vista previa de los datos")
-        render_preview(ctx["source_filename"], ctx["df"], ctx["profile"])
-    with sub_tabs[1]:
+    if active == "Resumen":
+        if analysis_ready:
+            render_executive_dashboard(
+                ctx["quality_score"],
+                ctx["warnings"],
+                ctx["kpis_df"],
+                ctx["source_filename"],
+                ctx["profile"],
+                df=ctx["df"],
+                date_col=ctx["date_col"],
+                amount_col=ctx["amount_col"],
+                category_col=ctx["category_col"],
+            )
+        else:
+            st.markdown('<div class="section-kicker">Resumen del dataset</div>', unsafe_allow_html=True)
+            render_summary_metrics(ctx["profile"], ctx["warnings_df"])
+            st.markdown('<div class="section-kicker">Vista previa de los datos</div>', unsafe_allow_html=True)
+            render_preview(ctx["source_filename"], ctx["df"], ctx["profile"])
+    elif active == "Calidad de datos":
         render_step_calidad(ctx)
-    with sub_tabs[2]:
-        render_step_analisis(ctx)
-    with sub_tabs[3]:
+    elif active == "Insights":
         render_step_insights(ctx)
-    with sub_tabs[4]:
+    elif active == "Exportar":
         render_step_exportar(ctx)
 
 
@@ -123,20 +129,74 @@ def _quality_ring_svg(score: int) -> str:
     )
 
 
+def _quality_verdict(score: int) -> str:
+    if score >= 85:
+        return "Calidad alta y confiable"
+    if score >= 70:
+        return "Calidad aceptable, con reservas"
+    if score >= 55:
+        return "Calidad regular, requiere revisión"
+    return "Calidad crítica, revisar antes de presentar"
+
+
+def _warning_rows_html(warnings_df: pd.DataFrame) -> str:
+    if warnings_df.empty:
+        return (
+            '<tr><td>Sin alertas</td><td>No se detectaron validaciones relevantes.</td>'
+            '<td>0</td><td><span class="severity-badge low">Baja</span></td></tr>'
+        )
+    severity_class = {"Alta": "high", "Media": "medium", "Baja": "low"}
+    rows = []
+    for _, row in warnings_df.head(9).iterrows():
+        detail = str(row.get("detail", ""))
+        match = re.search(r"(\d+)", detail.replace(".", ""))
+        count = match.group(1) if match else "—"
+        severity = str(row.get("severity", "Baja"))
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(row.get('issue', 'Validación')))}</td>"
+            f"<td>{escape(detail)}</td>"
+            f"<td>{escape(count)}</td>"
+            f'<td><span class="severity-badge {severity_class.get(severity, "low")}">{escape(severity)}</span></td>'
+            "</tr>"
+        )
+    return "".join(rows)
+
+
 def render_step_calidad(ctx: dict) -> None:
     quality_score = ctx["quality_score"]
     df = ctx["df"]
-    st.subheader("Revisión de calidad")
-    st.caption("Antes de tomar decisiones, revisa nulos, duplicados, formatos inválidos y valores sospechosos.")
+    warnings_df = ctx["warnings_df"]
+    high = 0 if warnings_df.empty else int((warnings_df["severity"] == "Alta").sum())
+    medium = 0 if warnings_df.empty else int((warnings_df["severity"] == "Media").sum())
+    low = 0 if warnings_df.empty else int((warnings_df["severity"] == "Baja").sum())
+    score = int(quality_score["score"])
     st.markdown(
         f'<div class="card quality-ring-card">'
-        f'{_quality_ring_svg(quality_score["score"])}'
-        f'<div><div style="font-size:16px;font-weight:600;margin-bottom:4px">Calidad del dataset</div>'
-        f'<div style="font-size:13px;color:var(--text-secondary)">{quality_score["label"]}</div></div>'
+        f'{_quality_ring_svg(score)}'
+        '<div>'
+        f'<div class="quality-copy-title">{_quality_verdict(score)}</div>'
+        '<div class="quality-copy-desc">El dataset es utilizable, pero hay advertencias que conviene resolver antes de '
+        'presentar resultados a stakeholders. Revisa duplicados, nulos y valores sospechosos.</div>'
+        '<div class="quality-counts">'
+        f'<span class="quality-count high"><strong>{high}</strong>Alta</span>'
+        f'<span class="quality-count medium"><strong>{medium}</strong>Media</span>'
+        f'<span class="quality-count low"><strong>{low}</strong>Baja</span>'
+        '</div>'
+        '</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
-    render_quality_overview(ctx["warnings_df"])
+    st.markdown(f'<div class="section-kicker">{len(warnings_df)} validaciones automáticas</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="dark-table-wrap">'
+        '<table class="dark-preview-table quality-table">'
+        '<thead><tr><th>Validación</th><th>Detalle</th><th>Filas</th><th>Severidad</th></tr></thead>'
+        f'<tbody>{_warning_rows_html(warnings_df)}</tbody>'
+        '</table>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     with st.expander("Mapa simple de datos faltantes", expanded=False):
         st.plotly_chart(create_null_heatmap(df), width="stretch", key="null_heatmap_chart")
 
@@ -675,14 +735,7 @@ def render_step_analisis(ctx: dict) -> None:
         st.info("Ejecuta el análisis para desbloquear tendencias, categorías, segmentación y más.")
         return
 
-    sub_tabs = st.tabs([
-        "Básico",
-        "Categorías y Pareto",
-        "Tabla pivot",
-        "Segmentación",
-        "Limpieza",
-        "Avanzado",
-    ])
+    sub_tabs = st.tabs(ANALYSIS_SUBTAB_OPTIONS)
     with sub_tabs[0]:
         _render_sub_numerico(ctx)
     with sub_tabs[1]:
@@ -703,7 +756,7 @@ def render_step_insights(ctx: dict) -> None:
     profile = ctx["profile"]
     anomalies = ctx["anomalies"]
 
-    st.subheader("Insights automáticos")
+    st.markdown('<div class="section-kicker">Insights automáticos</div>', unsafe_allow_html=True)
     render_insights(insights, kpis_df, profile, anomalies)
     with st.expander("Ver texto completo de insights", expanded=False):
         st.text_area("Resumen generado", ctx["insights_text"], height=360, key="executive_insights_text")
@@ -728,7 +781,7 @@ def render_step_exportar(ctx: dict) -> None:
     insights_text = ctx["insights_text"]
     APP_TITLE = ctx["app_title"]
 
-    st.subheader("Descargar resultados")
+    st.markdown('<div class="section-kicker">Descargar informe</div>', unsafe_allow_html=True)
 
     pdf_figures = st.session_state.get("figures_for_pdf", {}).copy()
     saved_forecast = st.session_state.get("forecast")
@@ -739,10 +792,6 @@ def render_step_exportar(ctx: dict) -> None:
     n_kpis = len(kpis_df)
     n_insights = len(insights.get("hallazgos", []) or [])
     n_warnings = len(warnings_df)
-    st.caption(
-        f"Se incluirán: {n_kpis} KPIs · {n_graphs} gráficos · "
-        f"{n_insights} insights · {n_warnings} alertas de calidad."
-    )
 
     export_sheets = {
         "Resumen": pd.DataFrame(
@@ -764,50 +813,83 @@ def render_step_exportar(ctx: dict) -> None:
         "Estados": status_summary(df, status_col, amount_col) if status_col else pd.DataFrame(),
         "Tendencia temporal": temporal_trend(df, date_col, amount_col) if date_col else pd.DataFrame(),
     }
-    with st.spinner("Preparando archivos para descargar..."):
-        excel_bytes = export_excel(export_sheets, insights_text)
-        pdf_bytes = export_pdf(APP_TITLE, profile, kpis_df, insights, figures=pdf_figures)
-    col_a, col_b = st.columns(2)
-    col_a.download_button(
-        "Descargar Excel",
-        excel_bytes,
-        file_name="ba_data_insight_resultados.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        width="stretch",
-        key="download_excel",
-    )
-    col_b.download_button(
-        "Descargar PDF ejecutivo",
-        pdf_bytes,
-        file_name="ba_data_insight_resumen.pdf",
-        mime="application/pdf",
-        width="stretch",
-        key="download_pdf",
-    )
-
-    st.divider()
-    st.subheader("PowerPoint ejecutivo")
-    st.caption("Presentación lista para compartir con stakeholders. "
-               "Incluye portada, KPIs, gráficos y insights.")
-    if st.button("Generar PowerPoint", key="btn_pptx"):
-        with st.spinner("Generando presentación..."):
-            try:
-                pptx_bytes = export_pptx(
-                    title=APP_TITLE,
-                    profile=profile,
-                    kpis=kpis_df,
-                    insights=insights,
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        st.markdown(
+            '<div class="export-card">'
+            '<div class="export-icon green">XLS</div>'
+            '<div class="export-title">Excel</div>'
+            '<div class="export-desc">Multi-pestaña: resumen, KPIs, calidad, anomalías y tendencias.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Descargar .xlsx", width="stretch", key="prepare_excel"):
+            with st.spinner("Preparando Excel..."):
+                st.session_state["export_excel_bytes"] = export_excel(export_sheets, insights_text)
+        if st.session_state.get("export_excel_bytes"):
+            st.download_button(
+                "Guardar .xlsx",
+                st.session_state["export_excel_bytes"],
+                file_name="ba_data_insight_resultados.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                width="stretch",
+                key="download_excel",
+            )
+    with col_b:
+        st.markdown(
+            '<div class="export-card">'
+            '<div class="export-icon red">PDF</div>'
+            '<div class="export-title">PDF ejecutivo</div>'
+            '<div class="export-desc">Informe con KPIs, gráficos embebidos y narrativa de negocio.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Descargar .pdf", width="stretch", key="prepare_pdf"):
+            with st.spinner("Preparando PDF..."):
+                st.session_state["export_pdf_bytes"] = export_pdf(
+                    APP_TITLE,
+                    profile,
+                    kpis_df,
+                    insights,
                     figures=pdf_figures,
-                    quality_score=st.session_state.get("quality_score"),
                 )
-                st.download_button(
-                    label="Descargar .pptx",
-                    data=pptx_bytes,
-                    file_name="reporte_ba_insight.pptx",
-                    mime="application/vnd.openxmlformats-officedocument"
-                         ".presentationml.presentation",
-                    key="download_pptx",
-                )
-                st.success("Presentación lista. Haz clic en Descargar .pptx")
-            except Exception as e:
-                st.error(f"Error al generar PowerPoint: {e}")
+        if st.session_state.get("export_pdf_bytes"):
+            st.download_button(
+                "Guardar .pdf",
+                st.session_state["export_pdf_bytes"],
+                file_name="ba_data_insight_resumen.pdf",
+                mime="application/pdf",
+                width="stretch",
+                key="download_pdf",
+            )
+    with col_c:
+        st.markdown(
+            '<div class="export-card">'
+            '<div class="export-icon amber">PPT</div>'
+            '<div class="export-title">PowerPoint</div>'
+            '<div class="export-desc">Deck ejecutivo listo para compartir con stakeholders.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Descargar .pptx", key="btn_pptx", width="stretch", type="primary"):
+            with st.spinner("Generando presentación..."):
+                try:
+                    st.session_state["export_pptx_bytes"] = export_pptx(
+                        title=APP_TITLE,
+                        profile=profile,
+                        kpis=kpis_df,
+                        insights=insights,
+                        figures=pdf_figures,
+                        quality_score=st.session_state.get("quality_score"),
+                    )
+                except Exception as e:
+                    st.error(f"Error al generar PowerPoint: {e}")
+        if st.session_state.get("export_pptx_bytes"):
+            st.download_button(
+                label="Guardar .pptx",
+                data=st.session_state["export_pptx_bytes"],
+                file_name="reporte_ba_insight.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                key="download_pptx",
+                width="stretch",
+            )

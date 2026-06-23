@@ -87,7 +87,6 @@ from src.ui.sidebar import (
     render_sidebar_source,
     render_wizard_nav,
 )
-from src.ui.dashboard import render_column_detection_cards
 from src.ui.tabs import render_step_resumen
 
 
@@ -123,13 +122,6 @@ def file_signature(uploaded) -> str:
 
 def main() -> None:
     inject_custom_css()
-
-    if LOGO_WIDE_PATH.exists():
-        st.logo(
-            str(LOGO_WIDE_PATH),
-            size="large",
-            icon_image=str(LOGO_ICON_PATH) if LOGO_ICON_PATH.exists() else None,
-        )
 
     # Peek at the wizard step before rendering the nav, so that a file
     # uploaded/selected in THIS render already unlocks "columnas" instead
@@ -270,7 +262,7 @@ def main() -> None:
     if step == "cargar":
         st.success("Archivo cargado correctamente.")
 
-        if st.session_state.get("data_source") == "Múltiples archivos (batch)":
+        if st.session_state.get("data_source") == "Base de datos":
             batch_validation = st.session_state.get("batch_validation")
             batch_summary_df = st.session_state.get("batch_summary")
             if batch_validation and batch_summary_df is not None:
@@ -290,13 +282,7 @@ def main() -> None:
                             "per_file_missing"].items():
                             st.write(f"**{fname}**: {', '.join(missing)}")
 
-    if step == "columnas":
-        st.subheader("Confirmar columnas clave")
-        st.caption("Revisa las columnas detectadas y ajústalas si es necesario.")
-        render_column_detection_cards(detected)
-        st.divider()
-
-    if step == "resumen":
+    if step in ("columnas", "resumen"):
         render_sidebar_context_card(
             source_filename, profile, analysis_type,
             st.session_state.get("quality_score"),
@@ -313,6 +299,8 @@ def main() -> None:
     date_col = clean_selection(controls["date_col"])
     category_col = clean_selection(controls["category_col"])
     status_col = clean_selection(controls["status_col"])
+    analysis_type = st.session_state.get("analysis_type", analysis_type)
+    threshold = st.session_state.get("anomaly_threshold", threshold)
 
     if controls["run_analysis"]:
         st.session_state["analysis_has_run"] = True
@@ -323,9 +311,6 @@ def main() -> None:
     warnings_df = warnings_to_frame(warnings)
     quality_score = calculate_quality_score(profile, warnings)
     st.session_state["quality_score"] = quality_score
-
-    if not st.session_state.get("analysis_has_run", False) and step == "columnas":
-        st.info("Previsualiza los datos y revisa la calidad. Luego confirma las columnas y presiona **Ejecutar análisis**.")
 
     analysis_ready = st.session_state.get("analysis_has_run", False)
     kpis: list[dict] = []

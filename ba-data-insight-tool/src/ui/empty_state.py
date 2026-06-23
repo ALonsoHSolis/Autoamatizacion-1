@@ -32,29 +32,37 @@ def render_empty_state(load_data=None) -> None:
         '<div class="eyebrow">DE PLANILLA A DECISIÓN</div>'
         '<h2>Convierte tus datos en <span class="accent">insights</span> de negocio en minutos</h2>'
         '<p class="hero-subtitle">Carga un Excel, CSV o Google Sheet y obtén KPIs, calidad de datos, '
-        'alertas, tendencias y recomendaciones accionables.</p>'
+        'alertas, tendencias y recomendaciones accionables sin preparación previa.</p>'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    col_a, col_b = st.columns(2)
+    col_a, col_b, _ = st.columns([0.16, 0.25, 0.59])
     with col_a:
-        if st.button("📂 Cargar archivo", type="primary", width="stretch", key="btn_cta_cargar"):
+        if st.button(
+            "Cargar archivo",
+            type="primary",
+            width="stretch",
+            key="btn_cta_cargar",
+            icon=":material/upload:",
+        ):
             st.session_state["wizard_step"] = "cargar"
             st.rerun()
-        st.caption("Sube tu archivo Excel o CSV para comenzar el análisis.")
     with col_b:
-        if st.button("▶️ Probar con datos de ejemplo", width="stretch", key="btn_cta_demo"):
+        if st.button(
+            "Probar con datos de ejemplo",
+            width="stretch",
+            key="btn_cta_demo",
+            icon=":material/play_arrow:",
+        ):
             if load_data is not None and SAMPLE_FILE.exists():
                 st.session_state["demo_df"] = load_data(str(SAMPLE_FILE), SAMPLE_FILE.name)
                 st.session_state["wizard_step"] = "columnas"
                 st.rerun()
             else:
                 st.error("No se encontró el archivo de ejemplo.")
-        st.caption("Explora la herramienta con datos de muestra.")
 
-    st.divider()
-    st.subheader("Cómo funciona")
+    st.markdown('<div class="section-kicker">Cómo funciona</div>', unsafe_allow_html=True)
     cols = st.columns(4)
     for col, (num, title, desc) in zip(cols, HOW_IT_WORKS):
         with col:
@@ -68,7 +76,7 @@ def render_empty_state(load_data=None) -> None:
             )
 
     st.divider()
-    st.subheader("Qué obtendrás")
+    st.markdown('<div class="section-kicker">Qué obtendrás</div>', unsafe_allow_html=True)
     cols = st.columns(5)
     for col, (icon, title, desc) in zip(cols, WHAT_YOU_GET):
         with col:
