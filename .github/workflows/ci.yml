@@ -24,4 +24,6 @@ jobs:
       - name: Compile check
         run: python -m compileall src app.py
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        env:
+          PYTHONPATH: ${{ github.workspace }}/ba-data-insight-tool
+        run: python -m pytest tests/ -v --tb=short
