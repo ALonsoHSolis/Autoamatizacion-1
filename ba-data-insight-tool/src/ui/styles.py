@@ -613,6 +613,314 @@ def inject_custom_css() -> None:
         color: var(--text-secondary);
     }
 
+    /* ============ Workspace launcher / switcher ============ */
+    .workspace-landing {
+        max-width: 1120px;
+        margin: 74px auto 28px auto;
+        text-align: center;
+    }
+    .workspace-kicker {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--primary-blue);
+        margin-bottom: 12px;
+    }
+    .workspace-landing h1,
+    .treasury-placeholder h1 {
+        color: var(--text-main);
+        font-size: 36px;
+        line-height: 1.12;
+        font-weight: 800;
+        margin: 0 0 10px 0;
+        letter-spacing: 0;
+    }
+    .workspace-landing p,
+    .treasury-placeholder > p {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.55;
+        max-width: 680px;
+        margin: 0 auto;
+    }
+    .workspace-card {
+        min-height: 254px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: 18px;
+        padding: 24px;
+        margin-top: 18px;
+        margin-bottom: 14px;
+    }
+    .workspace-card-active {
+        background: linear-gradient(135deg, rgba(91, 141, 239, 0.16), var(--bg-card) 70%);
+        border-color: rgba(91, 141, 239, 0.32);
+    }
+    .workspace-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+    .workspace-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+    .workspace-icon.blue {
+        color: #fff;
+        background: var(--primary-blue);
+        box-shadow: 0 10px 24px rgba(91, 141, 239, 0.25);
+    }
+    .workspace-icon.amber {
+        color: var(--accent-amber);
+        background: rgba(233, 169, 74, 0.14);
+    }
+    .workspace-icon.violet {
+        color: #B8A5FF;
+        background: rgba(139, 92, 246, 0.16);
+    }
+    .workspace-icon.green {
+        color: var(--accent-green);
+        background: rgba(69, 192, 138, 0.14);
+    }
+    .workspace-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .workspace-badge.active {
+        color: var(--accent-green);
+        background: rgba(69, 192, 138, 0.14);
+    }
+    .workspace-badge.pending {
+        color: var(--accent-amber);
+        background: rgba(233, 169, 74, 0.14);
+    }
+    .workspace-card h2 {
+        color: var(--text-main);
+        font-size: 22px;
+        font-weight: 800;
+        margin: 0 0 8px 0;
+    }
+    .workspace-card p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.55;
+        margin: 0;
+    }
+    .st-key-workspace_enter_ba .stButton button,
+    .st-key-workspace_enter_treasury .stButton button,
+    .st-key-workspace_enter_reconciliation .stButton button,
+    .st-key-workspace_enter_cost_jc .stButton button {
+        min-height: 46px;
+        border-radius: 11px;
+    }
+    .workspace-topbar-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 4px 0 12px 0;
+    }
+    .workspace-topbar-title span {
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+    }
+    .workspace-topbar-title strong {
+        color: var(--text-main);
+        font-size: 13px;
+    }
+    div[class*="st-key-workspace_switcher_"] {
+        margin: 0 0 10px 0;
+    }
+    div[class*="st-key-workspace_switcher_"] div[data-baseweb="select"] > div {
+        min-height: 36px;
+        border-radius: 10px !important;
+    }
+    .treasury-placeholder {
+        max-width: 980px;
+        margin: 92px auto 0 auto;
+        background: linear-gradient(135deg, rgba(233, 169, 74, 0.10), var(--bg-card) 70%);
+        border: 1px solid var(--border-soft);
+        border-radius: 20px;
+        padding: 34px;
+    }
+    .treasury-placeholder-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 30px;
+    }
+    .treasury-placeholder-grid > div {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 16px;
+    }
+    .treasury-placeholder-grid span {
+        display: inline-flex;
+        color: var(--accent-amber);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        margin-bottom: 10px;
+    }
+    .treasury-placeholder-grid strong {
+        display: block;
+        color: var(--text-main);
+        margin-bottom: 5px;
+    }
+    .treasury-placeholder-grid p {
+        color: var(--text-secondary);
+        font-size: 12.5px;
+        line-height: 1.45;
+        margin: 0;
+    }
+    .treasury-header {
+        margin: 26px 0 16px 0;
+    }
+    .treasury-header h1 {
+        color: var(--text-main);
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 6px 0;
+        letter-spacing: 0;
+    }
+    .treasury-header p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+    }
+    .treasury-status-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 13px 16px;
+        margin-bottom: 18px;
+    }
+    .treasury-status-card strong {
+        color: var(--text-main);
+        font-size: 13px;
+    }
+    .treasury-status-card span {
+        color: var(--text-secondary);
+        font-size: 12.5px;
+    }
+    .treasury-status-card.ok { border-color: rgba(69, 192, 138, 0.28); }
+    .treasury-status-card.warn { border-color: rgba(233, 169, 74, 0.28); }
+    .treasury-status-card.alert { border-color: rgba(232, 115, 107, 0.30); }
+    .treasury-panel-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        min-height: 112px;
+    }
+    .treasury-panel-card h3 {
+        color: var(--text-main);
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+    }
+    .treasury-panel-card p {
+        color: var(--text-secondary);
+        font-size: 12.5px;
+        line-height: 1.45;
+        margin: 0;
+    }
+    .treasury-html-table {
+        margin-top: 0;
+    }
+    .treasury-note {
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 15px 17px;
+        margin-bottom: 10px;
+    }
+    .treasury-note > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 8px;
+    }
+    .treasury-note strong {
+        color: var(--text-main);
+        font-size: 13px;
+    }
+    .treasury-note span,
+    .treasury-note small {
+        color: var(--text-muted);
+        font-size: 11px;
+        font-family: var(--font-mono);
+    }
+    .treasury-note p {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.55;
+        margin: 0 0 8px 0;
+    }
+    .cost-jc-header {
+        margin: 26px 0 16px 0;
+        padding: 22px 24px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(91, 141, 239, 0.08) 42%, transparent 100%);
+        border: 1px solid rgba(139, 92, 246, 0.24);
+        border-radius: 18px;
+    }
+    .cost-jc-header h1 {
+        color: var(--text-main);
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 6px 0;
+        letter-spacing: 0;
+    }
+    .cost-jc-header p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+        max-width: 860px;
+    }
+    .cost-jc-feature {
+        min-height: 122px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 17px 18px;
+        margin-bottom: 12px;
+    }
+    .cost-jc-feature h3 {
+        color: var(--text-main);
+        font-size: 15px;
+        margin: 0 0 7px 0;
+    }
+    .cost-jc-feature p {
+        color: var(--text-secondary);
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin: 0;
+    }
+    .cost-jc-kpi {
+        border-color: rgba(139, 92, 246, 0.22);
+    }
+
     /* ============ Alert boxes: borde izq acento ============ */
     div[data-testid="stAlertContainer"] {
         background: var(--bg-panel);

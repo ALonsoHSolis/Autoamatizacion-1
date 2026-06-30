@@ -19,11 +19,16 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 APP_PATH = Path(__file__).parent.parent / "app.py"
+WORKSPACE_BA = "ba_data"
+WORKSPACE_TREASURY = "treasury_tower"
+WORKSPACE_RECONCILIATION = "reconciliation_e2e"
+WORKSPACE_COST_JC = "cost_jc"
 
 
 @pytest.fixture
 def at():
     test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    test.session_state["active_workspace"] = WORKSPACE_BA
     test.run()
     return test
 
@@ -48,8 +53,84 @@ def _seed_loaded_step(step: str, analysis_has_run: bool = True):
     test.session_state["analysis_has_run"] = analysis_has_run
     test.session_state["active_subtab"] = "Insights"
     test.session_state["wizard_step"] = step
+    test.session_state["active_workspace"] = WORKSPACE_BA
     test.run()
     return test
+
+
+class TestWorkspaceEntry:
+    def test_landing_renders_before_ba_flow(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.run()
+
+        assert len(test.exception) == 0
+        button_keys = {b.key for b in test.button}
+        assert "workspace_enter_ba" in button_keys
+        assert "workspace_enter_treasury" in button_keys
+        assert "workspace_enter_reconciliation" in button_keys
+        assert "workspace_enter_cost_jc" in button_keys
+        assert "wizard_btn_inicio" not in {b.key for b in test.sidebar.button}
+
+    def test_enter_ba_opens_existing_flow(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.run()
+        _click(test, "workspace_enter_ba")
+
+        assert test.session_state["active_workspace"] == WORKSPACE_BA
+        assert "wizard_btn_inicio" in {b.key for b in test.sidebar.button}
+        assert len(test.exception) == 0
+
+    def test_enter_treasury_shows_mvp_shell(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.run()
+        _click(test, "workspace_enter_treasury")
+
+        assert test.session_state["active_workspace"] == WORKSPACE_TREASURY
+        assert "wizard_btn_inicio" not in {b.key for b in test.sidebar.button}
+        body_text = " ".join(m.value for m in test.markdown)
+        assert "TREASURY TOWER" in body_text
+        assert "Centro de tesorería" in body_text
+        assert "Panel de liquidez" in {r.value for r in test.radio}
+        assert len(test.exception) == 0
+
+    def test_workspace_switcher_jumps_between_spaces(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.session_state["active_workspace"] = WORKSPACE_BA
+        test.run()
+
+        next(s for s in test.selectbox if s.key == "workspace_switcher_ba_data").set_value(WORKSPACE_TREASURY).run()
+
+        assert test.session_state["active_workspace"] == WORKSPACE_TREASURY
+        assert "workspace_switcher_treasury_tower" in {s.key for s in test.selectbox}
+        body_text = " ".join(m.value for m in test.markdown)
+        assert "TREASURY TOWER" in body_text
+        assert "Centro de tesorería" in body_text
+        assert len(test.exception) == 0
+
+    def test_enter_development_workspace_shows_mvp_placeholder(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.run()
+        _click(test, "workspace_enter_reconciliation")
+
+        assert test.session_state["active_workspace"] == WORKSPACE_RECONCILIATION
+        body_text = " ".join(m.value for m in test.markdown)
+        assert "ReconciliationE2E" in body_text
+        assert "MVP en desarrollo" in body_text
+        assert "wizard_btn_inicio" not in {b.key for b in test.sidebar.button}
+        assert len(test.exception) == 0
+
+    def test_enter_cost_jc_shows_enterprise_mvp(self):
+        test = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        test.run()
+        _click(test, "workspace_enter_cost_jc")
+
+        assert test.session_state["active_workspace"] == WORKSPACE_COST_JC
+        body_text = " ".join(m.value for m in test.markdown)
+        assert "MODEL OF COSTS" in body_text
+        assert "Plataforma enterprise de costeo y pricing" in body_text
+        assert "Inicio ejecutivo" in {r.value for r in test.radio}
+        assert "wizard_btn_inicio" not in {b.key for b in test.sidebar.button}
+        assert len(test.exception) == 0
 
 
 class TestInicioStep:

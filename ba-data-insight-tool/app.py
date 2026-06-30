@@ -78,6 +78,17 @@ from src.kpi_engine import calculate_kpis, forecast_trend, kpis_to_frame
 from src.ui.styles import inject_custom_css
 from src.ui.header import render_header
 from src.ui.empty_state import render_empty_state
+from src.ui.cost_jc import render_cost_jc_app
+from src.ui.workspace import (
+    WORKSPACE_BA,
+    WORKSPACE_COST_JC,
+    WORKSPACE_RECONCILIATION,
+    WORKSPACE_TREASURY,
+    render_workspace_mvp_placeholder,
+    render_treasury_workspace,
+    render_workspace_landing,
+    render_workspace_switcher,
+)
 from src.ui.sidebar import (
     ANALYSIS_TYPES,
     clean_selection,
@@ -119,9 +130,7 @@ def file_signature(uploaded) -> str:
     return f"{uploaded.name}:{uploaded.size}" if uploaded is not None else ""
 
 
-def main() -> None:
-    inject_custom_css()
-
+def render_ba_data_app() -> None:
     # Peek at the wizard step before rendering the nav, so that a file
     # uploaded/selected in THIS render already unlocks "columnas" instead
     # of requiring an extra rerun.
@@ -385,6 +394,28 @@ def main() -> None:
         st.success("Archivo listo. Pasa a **Confirmar columnas** en el panel de progreso para continuar.")
     elif step == "resumen":
         render_step_resumen(ctx)
+
+
+def main() -> None:
+    inject_custom_css()
+
+    active_workspace = st.session_state.get("active_workspace")
+    if active_workspace is None:
+        render_workspace_landing()
+        return
+
+    active_workspace = render_workspace_switcher()
+    if active_workspace == WORKSPACE_BA:
+        render_ba_data_app()
+    elif active_workspace == WORKSPACE_TREASURY:
+        render_treasury_workspace()
+    elif active_workspace == WORKSPACE_COST_JC:
+        render_cost_jc_app()
+    elif active_workspace == WORKSPACE_RECONCILIATION:
+        render_workspace_mvp_placeholder(active_workspace)
+    else:
+        st.session_state.pop("active_workspace", None)
+        st.rerun()
 
 
 if __name__ == "__main__":
